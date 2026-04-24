@@ -16,4 +16,5 @@ export interface AssignmentRepository {
   extendDeadline(id: string, newDeadline: Date): Promise<IAssignment | null>;
   updateStatus(id: string, status: AssignmentStatus): Promise<IAssignment | null>;
   findPendingByDiscordUserId(discordUserId: string): Promise<IAssignment[]>;
+  findAllPending(): Promise<IAssignment[]>;
 }
