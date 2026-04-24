@@ -2,6 +2,7 @@ import type { IAssignment } from "../models/assignment.model";
 import type { Logger } from "../core/logger/logger";
 import type { AssignmentRepository } from "../repositories/interfaces/assignment-repository";
 import type { UserRepository } from "../repositories/interfaces/user-repository";
+import { TaskReminderScheduleService } from "./task-reminder-schedule-service";
 
 export interface AssignTaskInput {
   discordUserId: string;
@@ -29,6 +30,7 @@ export class AssignmentService {
   constructor(
     private readonly assignmentRepository: AssignmentRepository,
     private readonly userRepository: UserRepository,
+    private readonly taskReminderScheduleService: TaskReminderScheduleService,
     private readonly logger: Logger,
   ) {}
 
@@ -49,6 +51,16 @@ export class AssignmentService {
     });
 
     await this.userRepository.appendAssignment(input.discordUserId, assignment.id);
+
+    try {
+      await this.taskReminderScheduleService.scheduleForAssignment(assignment);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown reminder scheduling error.";
+      this.logger.warn("Assignment created but reminder scheduling failed.", {
+        assignmentId: assignment.id,
+        message,
+      });
+    }
 
     this.logger.info("Assignment created.", {
       assignmentId: assignment.id,
@@ -100,6 +112,16 @@ export class AssignmentService {
         allowed: false,
         reason: "Unable to apply extension right now.",
       };
+    }
+
+    try {
+      await this.taskReminderScheduleService.rescheduleForAssignment(updatedAssignment);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown reminder rescheduling error.";
+      this.logger.warn("Assignment deadline extended but reminder rescheduling failed.", {
+        assignmentId: updatedAssignment.id,
+        message,
+      });
     }
 
     this.logger.info("Assignment deadline extended.", {
