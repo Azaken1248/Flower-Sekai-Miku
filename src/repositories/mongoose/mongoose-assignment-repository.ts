@@ -72,4 +72,10 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
       status: "PENDING",
     }).exec();
   }
+
+  async findAllPending(): Promise<IAssignment[]> {
+    return AssignmentModel.find({
+      status: "PENDING",
+    }).exec();
+  }
 }
