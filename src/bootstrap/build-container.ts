@@ -12,9 +12,13 @@ import { createLogger } from "../core/logger/logger";
 import { CommandDeployer } from "../discord/command-deployer";
 import { MongooseAssignmentRepository } from "../repositories/mongoose/mongoose-assignment-repository";
 import { MongooseGuildConfigRepository } from "../repositories/mongoose/mongoose-guild-config-repository";
+import { MongooseTaskReminderRepository } from "../repositories/mongoose/mongoose-task-reminder-repository";
 import { MongooseUserRepository } from "../repositories/mongoose/mongoose-user-repository";
 import { AssignmentService } from "../services/assignment-service";
 import { ConfigCacheService } from "../services/config-cache-service";
+import { TaskReminderBootstrapService } from "../services/task-reminder-bootstrap-service";
+import { TaskReminderDispatcherService } from "../services/task-reminder-dispatcher-service";
+import { TaskReminderScheduleService } from "../services/task-reminder-schedule-service";
 import { UserService } from "../services/user-service";
 
 export const buildContainer = (): ServiceContainer => {
@@ -40,6 +44,10 @@ export const buildContainer = (): ServiceContainer => {
     TOKENS.guildConfigRepository,
     () => new MongooseGuildConfigRepository(),
   );
+  container.registerSingleton(
+    TOKENS.taskReminderRepository,
+    () => new MongooseTaskReminderRepository(),
+  );
 
   container.registerSingleton(
     TOKENS.userService,
@@ -48,11 +56,43 @@ export const buildContainer = (): ServiceContainer => {
   );
 
   container.registerSingleton(
+    TOKENS.taskReminderScheduleService,
+    (resolver) =>
+      new TaskReminderScheduleService(
+        resolver.resolve(TOKENS.config),
+        resolver.resolve(TOKENS.taskReminderRepository),
+        resolver.resolve(TOKENS.logger),
+      ),
+  );
+
+  container.registerSingleton(
+    TOKENS.taskReminderBootstrapService,
+    (resolver) =>
+      new TaskReminderBootstrapService(
+        resolver.resolve(TOKENS.assignmentRepository),
+        resolver.resolve(TOKENS.taskReminderScheduleService),
+        resolver.resolve(TOKENS.logger),
+      ),
+  );
+
+  container.registerSingleton(
+    TOKENS.taskReminderDispatcherService,
+    (resolver) =>
+      new TaskReminderDispatcherService(
+        resolver.resolve(TOKENS.config),
+        resolver.resolve(TOKENS.taskReminderRepository),
+        resolver.resolve(TOKENS.discordClient),
+        resolver.resolve(TOKENS.logger),
+      ),
+  );
+
+  container.registerSingleton(
     TOKENS.assignmentService,
     (resolver) =>
       new AssignmentService(
         resolver.resolve(TOKENS.assignmentRepository),
         resolver.resolve(TOKENS.userRepository),
+        resolver.resolve(TOKENS.taskReminderScheduleService),
         resolver.resolve(TOKENS.logger),
       ),
   );
@@ -115,6 +155,8 @@ export const buildContainer = (): ServiceContainer => {
         resolver.resolve(TOKENS.commandDeployer),
         resolver.resolve(TOKENS.interactionCreateHandler),
         resolver.resolve(TOKENS.configCacheService),
+        resolver.resolve(TOKENS.taskReminderBootstrapService),
+        resolver.resolve(TOKENS.taskReminderDispatcherService),
       ),
   );
 
