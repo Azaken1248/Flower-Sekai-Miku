@@ -26,6 +26,14 @@ export interface AppConfig {
     maxStandardExtensions: number | null;
     blockTimeLimitedAutoExtension: boolean;
   };
+  reminders: {
+    enabled: boolean;
+    offsetMinutes: number[];
+    pollIntervalMs: number;
+    batchSize: number;
+    lockDurationMs: number;
+    maxAttempts: number;
+  };
 }
 
 const readRequiredEnv = (name: string): string => {
@@ -78,6 +86,46 @@ const readBooleanWithDefault = (name: string, fallback: boolean): boolean => {
   throw new Error(`${name} must be either 'true' or 'false' when provided.`);
 };
 
+const readPositiveIntegerWithDefault = (name: string, fallback: number): number => {
+  const value = readOptionalEnv(name);
+  if (value === null) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer when provided.`);
+  }
+
+  return parsed;
+};
+
+const readReminderOffsetsWithDefault = (name: string, fallback: number[]): number[] => {
+  const value = readOptionalEnv(name);
+  if (value === null) {
+    return [...fallback];
+  }
+
+  const offsets = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .map((item) => {
+      const parsed = Number(item);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error(`${name} must be a comma-separated list of non-negative integers.`);
+      }
+
+      return parsed;
+    });
+
+  if (offsets.length === 0) {
+    throw new Error(`${name} must include at least one non-negative integer.`);
+  }
+
+  return [...new Set(offsets)].sort((a, b) => b - a);
+};
+
 const buildSpecializedRoleConfig = (): Record<SpecializedRoleKey, string> => {
   return {
     voiceActor: readWithDefault("ROLE_VOICE_ACTOR_ID", DEFAULT_SPECIALIZED_ROLE_IDS.voiceActor),
@@ -120,6 +168,14 @@ export const loadAppConfig = (): AppConfig => {
         "BLOCK_TIME_LIMITED_AUTO_EXTENSION",
         true,
       ),
+    },
+    reminders: {
+      enabled: readBooleanWithDefault("REMINDERS_ENABLED", true),
+      offsetMinutes: readReminderOffsetsWithDefault("REMINDER_OFFSETS_MINUTES", [1440, 360, 60, 0]),
+      pollIntervalMs: readPositiveIntegerWithDefault("REMINDER_POLL_INTERVAL_MS", 30000),
+      batchSize: readPositiveIntegerWithDefault("REMINDER_BATCH_SIZE", 25),
+      lockDurationMs: readPositiveIntegerWithDefault("REMINDER_LOCK_DURATION_MS", 60000),
+      maxAttempts: readPositiveIntegerWithDefault("REMINDER_MAX_ATTEMPTS", 5),
     },
   };
 };
