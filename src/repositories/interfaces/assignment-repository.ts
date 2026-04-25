@@ -17,4 +17,5 @@ export interface AssignmentRepository {
   updateStatus(id: string, status: AssignmentStatus): Promise<IAssignment | null>;
   findPendingByDiscordUserId(discordUserId: string): Promise<IAssignment[]>;
   findAllPending(): Promise<IAssignment[]>;
+  countByDiscordUserId(discordUserId: string, status?: AssignmentStatus): Promise<number>;
 }
