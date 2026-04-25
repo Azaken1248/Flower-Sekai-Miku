@@ -82,7 +82,6 @@ export class ProfileCommand implements SlashCommand {
           }
         }
       } catch {
-        // Silently fallback to empty roles array if member left the server or fetch fails
       }
     }
 
