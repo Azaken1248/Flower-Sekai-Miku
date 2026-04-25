@@ -52,7 +52,11 @@ export const buildContainer = (): ServiceContainer => {
   container.registerSingleton(
     TOKENS.userService,
     (resolver) =>
-      new UserService(resolver.resolve(TOKENS.userRepository), resolver.resolve(TOKENS.logger)),
+      new UserService(
+        resolver.resolve(TOKENS.userRepository),
+        resolver.resolve(TOKENS.assignmentRepository),
+        resolver.resolve(TOKENS.logger),
+      ),
   );
 
   container.registerSingleton(
