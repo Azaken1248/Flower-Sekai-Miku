@@ -19,7 +19,7 @@ const UserSchema = new Schema<IUser>({
   isOnHiatus: { type: Boolean, default: false },
   isDeboarded: { type: Boolean, default: false },
   deboardedAt: { type: Date, default: null },
-  deboardedMessage: { type: String, default: "Scouted in a different SEKAI" },
+  deboardedMessage: { type: String, default: "Moved to a different team" },
   joinedAt: { type: Date, default: Date.now },
   assignments: [{ type: Schema.Types.ObjectId, ref: "Assignment" }],
 });
