@@ -4,6 +4,7 @@ import {
   type SlashCommandOptionsOnlyBuilder,
 } from "discord.js";
 
+import { SPECIALIZED_ROLE_LABELS, type SpecializedRoleKey } from "../../../config/constants";
 import { createMikuEmbed } from "../../../presentation/miku-embed";
 import type { CommandExecutionContext } from "../../contracts/command-execution-context";
 import type { SlashCommand } from "../../contracts/slash-command";
@@ -62,6 +63,30 @@ export class ProfileCommand implements SlashCommand {
     const hiatusText = profile.user.isOnHiatus ? "Yes" : "No";
     const strikeText = `${profile.user.strikes}/3`;
 
+    const assignedRoles: string[] = [];
+
+    if (interaction.inGuild() && interaction.guild) {
+      try {
+        const member = await interaction.guild.members.fetch(targetUser.id);
+        
+        if (member.roles.cache.has(context.config.roles.owners)) {
+          assignedRoles.push("Owner");
+        }
+        if (member.roles.cache.has(context.config.roles.mods)) {
+          assignedRoles.push("Manager");
+        }
+
+        for (const [key, roleId] of Object.entries(context.config.roles.specialized)) {
+          if (member.roles.cache.has(roleId)) {
+            assignedRoles.push(SPECIALIZED_ROLE_LABELS[key as SpecializedRoleKey]);
+          }
+        }
+      } catch {
+      }
+    }
+
+    const rolesText = assignedRoles.length > 0 ? assignedRoles.join(", ") : "Standard Crew";
+
     const embed = createMikuEmbed({
       title: "Miku Profile Board",
       description: `Here is the latest profile snapshot for <@${targetUser.id}>.`,
@@ -74,7 +99,7 @@ export class ProfileCommand implements SlashCommand {
         },
         {
           name: "◈ Roster Status",
-          value: `> **Role:** \` ${statusText} \`\n> **Hiatus:** \` ${hiatusText} \`\n> **Strikes:** \` ${strikeText} \``,
+          value: `> **Status:** \` ${statusText} \`\n> **Roles:** \` ${rolesText} \`\n> **Hiatus:** \` ${hiatusText} \`\n> **Strikes:** \` ${strikeText} \``,
           inline: true,
         },
         {
