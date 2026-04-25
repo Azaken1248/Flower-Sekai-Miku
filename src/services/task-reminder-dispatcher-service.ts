@@ -8,10 +8,18 @@ import type { TaskReminderRepository } from "../repositories/interfaces/task-rem
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+type SendableReminderChannel = {
+  send(payload: {
+    content?: string;
+    embeds?: unknown[];
+  }): Promise<unknown>;
+};
+
 export class TaskReminderDispatcherService {
   private readonly workerId = `task-reminder-worker-${randomUUID()}`;
   private intervalHandle: NodeJS.Timeout | null = null;
   private cycleInProgress = false;
+  private reminderChannelCache: { channelId: string; channel: SendableReminderChannel } | null = null;
 
   constructor(
     private readonly appConfig: AppConfig,
@@ -109,12 +117,13 @@ export class TaskReminderDispatcherService {
     },
   ): Promise<void> {
     try {
-      const user = await this.discordClient.users.fetch(payload.discordUserId);
+      const reminderChannel = await this.resolveReminderChannel();
       const deadlineUnix = Math.floor(payload.deadline.getTime() / 1000);
       const msRemaining = payload.deadline.getTime() - Date.now();
       const tone = msRemaining <= ONE_HOUR_MS ? "wave" : "sky";
 
-      await user.send({
+      await reminderChannel.send({
+        content: `<@${payload.discordUserId}>`,
         embeds: [
           createMikuEmbed({
             title: "Miku Task Reminder",
@@ -148,5 +157,37 @@ export class TaskReminderDispatcherService {
         message,
       });
     }
+  }
+
+  private async resolveReminderChannel(): Promise<SendableReminderChannel> {
+    const reminderChannelId = this.appConfig.channels.remindersChannelId;
+
+    if (!reminderChannelId) {
+      throw new Error("Reminders channel is not configured.");
+    }
+
+    if (this.reminderChannelCache?.channelId === reminderChannelId) {
+      return this.reminderChannelCache.channel;
+    }
+
+    const channel = await this.discordClient.channels.fetch(reminderChannelId);
+
+    if (
+      !channel ||
+      !channel.isTextBased() ||
+      !("send" in channel) ||
+      typeof channel.send !== "function"
+    ) {
+      throw new Error("Configured reminders channel is unavailable or not text-based.");
+    }
+
+    const sendableChannel = channel as SendableReminderChannel;
+
+    this.reminderChannelCache = {
+      channelId: reminderChannelId,
+      channel: sendableChannel,
+    };
+
+    return sendableChannel;
   }
 }
