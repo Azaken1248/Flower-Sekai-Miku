@@ -25,9 +25,25 @@ describe("loadAppConfig", () => {
     expect(config.discord.applicationId).toBe("app-id");
     expect(config.discord.guildId).toBe("guild-id");
     expect(config.mongo.uri).toBe("mongodb://localhost:27017/test");
+    expect(config.channels.approvalChannelId).toBeNull();
+    expect(config.channels.remindersChannelId).toBeNull();
+    expect(config.channels.logsChannelId).toBeNull();
     expect(config.reminders.enabled).toBe(true);
     expect(config.reminders.offsetMinutes).toEqual([1440, 360, 60, 0]);
     expect(config.reminders.batchSize).toBe(25);
+  });
+
+  it("reads optional channel ids when configured", () => {
+    setRequiredBaseEnv();
+    process.env.APPROVAL_CHANNEL_ID = "approval-channel";
+    process.env.REMINDERS_CHANNEL_ID = "reminders-channel";
+    process.env.LOGS_CHANNEL_ID = "logs-channel";
+
+    const config = loadAppConfig();
+
+    expect(config.channels.approvalChannelId).toBe("approval-channel");
+    expect(config.channels.remindersChannelId).toBe("reminders-channel");
+    expect(config.channels.logsChannelId).toBe("logs-channel");
   });
 
   it("uses DISCORD_GUILD_ID when provided", () => {

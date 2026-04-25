@@ -148,7 +148,7 @@ describe("TaskReminderDispatcherService", () => {
     };
 
     const discordClient = {
-      users: {
+      channels: {
         fetch: vi.fn(),
       },
     };
@@ -188,13 +188,14 @@ describe("TaskReminderDispatcherService", () => {
       cancelPendingForAssignment: vi.fn(),
     };
 
-    const user = {
+    const channel = {
+      isTextBased: vi.fn().mockReturnValue(true),
       send: vi.fn().mockResolvedValue(undefined),
     };
 
     const discordClient = {
-      users: {
-        fetch: vi.fn().mockResolvedValue(user),
+      channels: {
+        fetch: vi.fn().mockResolvedValue(channel),
       },
     };
 
@@ -210,8 +211,12 @@ describe("TaskReminderDispatcherService", () => {
     await (service as unknown as { runDispatchCycle: () => Promise<void> }).runDispatchCycle();
 
     expect(taskReminderRepository.claimDueReminders).toHaveBeenCalledTimes(1);
-    expect(discordClient.users.fetch).toHaveBeenCalledWith("member-id");
-    expect(user.send).toHaveBeenCalledTimes(1);
+    expect(discordClient.channels.fetch).toHaveBeenCalledWith(config.channels.remindersChannelId);
+    expect(channel.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "<@member-id>",
+      }),
+    );
     expect(taskReminderRepository.markSent).toHaveBeenCalledWith(
       "reminder-id",
       expect.any(Date),
@@ -238,9 +243,14 @@ describe("TaskReminderDispatcherService", () => {
       cancelPendingForAssignment: vi.fn(),
     };
 
+    const channel = {
+      isTextBased: vi.fn().mockReturnValue(true),
+      send: vi.fn().mockRejectedValue(new Error("cannot send")),
+    };
+
     const discordClient = {
-      users: {
-        fetch: vi.fn().mockRejectedValue(new Error("cannot DM")),
+      channels: {
+        fetch: vi.fn().mockResolvedValue(channel),
       },
     };
 
@@ -255,7 +265,7 @@ describe("TaskReminderDispatcherService", () => {
 
     await (service as unknown as { runDispatchCycle: () => Promise<void> }).runDispatchCycle();
 
-    expect(taskReminderRepository.markFailed).toHaveBeenCalledWith("reminder-id", "cannot DM");
+    expect(taskReminderRepository.markFailed).toHaveBeenCalledWith("reminder-id", "cannot send");
     expect(logger.warn).toHaveBeenCalledWith(
       "Failed to send task reminder.",
       expect.objectContaining({ reminderId: "reminder-id" }),
@@ -274,7 +284,7 @@ describe("TaskReminderDispatcherService", () => {
     };
 
     const discordClient = {
-      users: {
+      channels: {
         fetch: vi.fn(),
       },
     };
@@ -294,5 +304,49 @@ describe("TaskReminderDispatcherService", () => {
       "Reminder dispatch cycle failed.",
       expect.objectContaining({ message: "claim failed" }),
     );
+  });
+
+  it("marks reminder as failed when reminders channel is not configured", async () => {
+    const config = createTestConfig();
+    config.channels.remindersChannelId = null;
+
+    const taskReminderRepository = {
+      createMany: vi.fn(),
+      claimDueReminders: vi.fn().mockResolvedValue([
+        {
+          id: "reminder-id",
+          discordUserId: "member-id",
+          taskName: "Task Name",
+          deadline: new Date("2026-12-01T08:00:00.000Z"),
+          offsetMinutes: 0,
+        },
+      ]),
+      markSent: vi.fn(),
+      markFailed: vi.fn().mockResolvedValue(undefined),
+      cancelPendingForAssignment: vi.fn(),
+    };
+
+    const discordClient = {
+      channels: {
+        fetch: vi.fn(),
+      },
+    };
+
+    const logger = createMockLogger();
+
+    const service = new TaskReminderDispatcherService(
+      config,
+      taskReminderRepository as never,
+      discordClient as never,
+      logger,
+    );
+
+    await (service as unknown as { runDispatchCycle: () => Promise<void> }).runDispatchCycle();
+
+    expect(taskReminderRepository.markFailed).toHaveBeenCalledWith(
+      "reminder-id",
+      "Reminders channel is not configured.",
+    );
+    expect(discordClient.channels.fetch).not.toHaveBeenCalled();
   });
 });

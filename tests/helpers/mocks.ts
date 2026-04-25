@@ -15,6 +15,8 @@ export const createTestConfig = (): AppConfig => ({
   },
   channels: {
     approvalChannelId: "approval-channel-id",
+    remindersChannelId: "reminders-channel-id",
+    logsChannelId: "logs-channel-id",
   },
   roles: {
     owners: "owner-role-id",

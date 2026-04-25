@@ -108,7 +108,7 @@ describe("utility commands", () => {
     const payload = interaction.reply.mock.calls[0][0];
     const embed = payload.embeds[0].toJSON();
 
-    expect(embed.fields?.some((field: { name: string; value: string }) => field.name === "Total Assignments" && field.value === "10")).toBe(true);
-    expect(embed.fields?.some((field: { name: string; value: string }) => field.name === "Deboard Note" && field.value === "Moved to a different team.")).toBe(true);
+    expect(embed.fields?.some((field: { name: string; value: string }) => field.name.includes("Assignment Record") && field.value.includes("Total     : 10"))).toBe(true);
+    expect(embed.fields?.some((field: { name: string; value: string }) => field.name.includes("Deboard Note") && field.value.includes("Moved to a different team."))).toBe(true);
   });
 });
