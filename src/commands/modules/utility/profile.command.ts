@@ -64,7 +64,7 @@ export class ProfileCommand implements SlashCommand {
     const strikeText = `${profile.user.strikes}/3`;
 
     const assignedRoles: string[] = [];
-
+    
     if (interaction.inGuild() && interaction.guild) {
       try {
         const member = await interaction.guild.members.fetch(targetUser.id);
@@ -82,6 +82,7 @@ export class ProfileCommand implements SlashCommand {
           }
         }
       } catch {
+        // Silently fallback to empty roles array if member left the server or fetch fails
       }
     }
 

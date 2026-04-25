@@ -1,4 +1,4 @@
-import { Client, Events, type TextBasedChannel } from "discord.js";
+import { Client, Events } from "discord.js";
 
 import type { InteractionCreateHandler } from "../commands/handlers/interaction-create-handler";
 import type { CommandLoader } from "../commands/loader/command-loader";
