@@ -78,4 +78,17 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
       status: "PENDING",
     }).exec();
   }
+
+  async countByDiscordUserId(discordUserId: string, status?: AssignmentStatus): Promise<number> {
+    const query = status
+      ? {
+          discordUserId,
+          status,
+        }
+      : {
+          discordUserId,
+        };
+
+    return AssignmentModel.countDocuments(query).exec();
+  }
 }
