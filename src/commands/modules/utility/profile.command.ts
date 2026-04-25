@@ -44,7 +44,7 @@ export class ProfileCommand implements SlashCommand {
         embeds: [
           createMikuEmbed({
             title: "Miku Profile Board",
-            description: `I could not find a crew profile for <@${targetUser.id}> yet. Ask an owner to onboard them first.`,
+            description: `> I could not find a crew profile for <@${targetUser.id}> yet. Ask an owner to onboard them first.`,
             tone: "mist",
           }),
         ],
@@ -58,73 +58,48 @@ export class ProfileCommand implements SlashCommand {
       : null;
     const tone = profile.user.isDeboarded ? "mist" : "bloom";
 
+    const statusText = profile.user.isDeboarded ? "Deboarded" : "Active";
+    const hiatusText = profile.user.isOnHiatus ? "Yes" : "No";
+    const strikeText = `${profile.user.strikes}/3`;
+
     const embed = createMikuEmbed({
       title: "Miku Profile Board",
       description: `Here is the latest profile snapshot for <@${targetUser.id}>.`,
       tone,
       fields: [
         {
-          name: "Member",
-          value: `<@${targetUser.id}>`,
+          name: "◈ Crew Identity",
+          value: `> **Member:** <@${targetUser.id}>\n> **Joined:** <t:${joinedUnix}:D> (<t:${joinedUnix}:R>)`,
           inline: true,
         },
         {
-          name: "Status",
-          value: profile.user.isDeboarded ? "Deboarded" : "Active",
+          name: "◈ Roster Status",
+          value: `> **Role:** \` ${statusText} \`\n> **Hiatus:** \` ${hiatusText} \`\n> **Strikes:** \` ${strikeText} \``,
           inline: true,
         },
         {
-          name: "Hiatus",
-          value: profile.user.isOnHiatus ? "Yes" : "No",
-          inline: true,
-        },
-        {
-          name: "Strikes",
-          value: String(profile.user.strikes),
-          inline: true,
-        },
-        {
-          name: "Joined",
-          value: `<t:${joinedUnix}:f>`,
-          inline: true,
-        },
-        {
-          name: "Total Assignments",
-          value: String(profile.assignmentStats.total),
-          inline: true,
-        },
-        {
-          name: "Pending",
-          value: String(profile.assignmentStats.pending),
-          inline: true,
-        },
-        {
-          name: "Completed",
-          value: String(profile.assignmentStats.completed),
-          inline: true,
-        },
-        {
-          name: "Late",
-          value: String(profile.assignmentStats.late),
-          inline: true,
-        },
-        {
-          name: "Excused",
-          value: String(profile.assignmentStats.excused),
-          inline: true,
+          name: "◈ Assignment Record",
+          value: "```yaml\n" +
+            `Total     : ${profile.assignmentStats.total}\n` +
+            `Pending   : ${profile.assignmentStats.pending}\n` +
+            `Completed : ${profile.assignmentStats.completed}\n` +
+            `Late      : ${profile.assignmentStats.late}\n` +
+            `Excused   : ${profile.assignmentStats.excused}\n` +
+            "```",
+          inline: false,
         },
       ],
     });
 
     if (deboardedUnix !== null) {
       embed.addFields({
-        name: "Deboarded At",
-        value: `<t:${deboardedUnix}:f>`,
+        name: "◈ Deboarded At",
+        value: `> <t:${deboardedUnix}:f>`,
         inline: true,
       });
       embed.addFields({
-        name: "Deboard Note",
-        value: normalizeDeboardMessage(profile.user.deboardedMessage).slice(0, 1024),
+        name: "◈ Deboard Note",
+        value: `> ${normalizeDeboardMessage(profile.user.deboardedMessage).slice(0, 1024)}`,
         inline: false,
       });
     }
