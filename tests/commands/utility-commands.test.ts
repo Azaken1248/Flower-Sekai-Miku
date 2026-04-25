@@ -72,7 +72,7 @@ describe("utility commands", () => {
     expect(embed.description).toContain("onboard them first");
   });
 
-  it("ProfileCommand renders stats and deboard note when profile exists", async () => {
+it("ProfileCommand renders stats, roles, and deboard note when profile exists", async () => {
     const command = new ProfileCommand();
     const interaction = createMockInteraction({
       user: { id: "invoker-id" },
@@ -82,6 +82,8 @@ describe("utility commands", () => {
           username: "target-user",
         },
       },
+      inGuild: true,
+      memberRoleIds: ["owner-role-id", "role-artist"], 
     });
 
     const context = createMockCommandContext();
@@ -108,7 +110,16 @@ describe("utility commands", () => {
     const payload = interaction.reply.mock.calls[0][0];
     const embed = payload.embeds[0].toJSON();
 
-    expect(embed.fields?.some((field: { name: string; value: string }) => field.name.includes("Assignment Record") && field.value.includes("Total     : 10"))).toBe(true);
-    expect(embed.fields?.some((field: { name: string; value: string }) => field.name.includes("Deboard Note") && field.value.includes("Moved to a different team."))).toBe(true);
+    expect(embed.fields?.some((field: { name: string; value: string }) => 
+      field.name.includes("Roster Status") && field.value.includes("Owner, Artist")
+    )).toBe(true);
+
+    expect(embed.fields?.some((field: { name: string; value: string }) => 
+      field.name.includes("Assignment Record") && field.value.includes("Total     : 10")
+    )).toBe(true);
+    
+    expect(embed.fields?.some((field: { name: string; value: string }) => 
+      field.name.includes("Deboard Note") && field.value.includes("Moved to a different team.")
+    )).toBe(true);
   });
 });
