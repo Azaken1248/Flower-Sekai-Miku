@@ -7,15 +7,17 @@ import {
   isLogSinkRegistrar,
   type LogEntry,
   type Logger,
+  type LogLevel,
 } from "../core/logger/logger";
 import { connectToDatabase } from "../database/connection";
 import type { CommandDeployer } from "../discord/command-deployer";
 import type { ConfigCacheService } from "../services/config-cache-service";
 import type { TaskReminderBootstrapService } from "../services/task-reminder-bootstrap-service";
 import type { TaskReminderDispatcherService } from "../services/task-reminder-dispatcher-service";
+import { createMikuEmbed, type MikuTone } from "../presentation/miku-embed";
 
 type SendableLogChannel = {
-  send(payload: { content: string }): Promise<unknown>;
+  send(payload: { content?: string; embeds?: any[] }): Promise<unknown>;
 };
 
 export class FlowerSekaiBot {
@@ -95,7 +97,7 @@ export class FlowerSekaiBot {
     });
   }
 
-private async resolveLogsChannel(channelId: string): Promise<SendableLogChannel | null> {
+  private async resolveLogsChannel(channelId: string): Promise<SendableLogChannel | null> {
     if (this.logsChannelCache?.channelId === channelId) {
       return this.logsChannelCache.channel;
     }
@@ -137,23 +139,70 @@ private async resolveLogsChannel(channelId: string): Promise<SendableLogChannel 
     channel: SendableLogChannel,
     entry: LogEntry,
   ): Promise<void> {
-    const metadataText = entry.metadata ? this.safeStringify(entry.metadata) : "";
-    const line = `[${entry.timestamp}] [${entry.scope}] [${entry.level}] ${entry.message}${metadataText ? ` ${metadataText}` : ""}`;
+    const toneByLevel: Record<LogLevel, MikuTone> = {
+      INFO: "sky",
+      WARN: "mist",
+      ERROR: "wave",
+    };
 
-    const maxLineLength = 1900;
-    const truncated =
-      line.length > maxLineLength ? `${line.slice(0, maxLineLength - 3)}...` : line;
+    const titleByLevel: Record<LogLevel, string> = {
+      INFO: "Miku System Status 🌟",
+      WARN: "Miku System Notice ⚠️",
+      ERROR: "Miku System Alert 🚨",
+    };
 
-    await channel.send({
-      content: `\`\`\`log\n${truncated}\n\`\`\``,
+    const tone = toneByLevel[entry.level];
+    const title = titleByLevel[entry.level];
+    const unixTime = Math.floor(new Date(entry.timestamp).getTime() / 1000);
+
+    const fields = [
+      {
+        name: "◈ Scope",
+        value: `\`${entry.scope}\``,
+        inline: true,
+      },
+      {
+        name: "◈ Timestamp",
+        value: `<t:${unixTime}:T>`,
+        inline: true,
+      },
+    ];
+
+    if (entry.metadata && Object.keys(entry.metadata).length > 0) {
+      const metadataText = this.safeStringify(entry.metadata);
+      const safeMetadata = metadataText.length > 1000 
+        ? `${metadataText.slice(0, 1000)}\n  ...[truncated]` 
+        : metadataText;
+
+      fields.push({
+        name: "◈ Context Metadata",
+        value: `\`\`\`json\n${safeMetadata}\n\`\`\``,
+        inline: false,
+      });
+    }
+
+    const embed = createMikuEmbed({
+      title,
+      description: `> **${entry.message}**`,
+      tone,
+      fields,
+      voiceWrap: false, 
     });
+
+    try {
+      await channel.send({ embeds: [embed] });
+    } catch (error) {
+      this.logger.error("Failed to forward Miku log embed to Discord.", { 
+        errorMessage: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
   }
 
   private safeStringify(metadata: Record<string, unknown>): string {
     try {
-      return JSON.stringify(metadata);
+      return JSON.stringify(metadata, null, 2);
     } catch {
-      return "{\"metadata\":\"serialization-failed\"}";
+      return "{\n  \"error\": \"serialization-failed\"\n}";
     }
   }
 }
