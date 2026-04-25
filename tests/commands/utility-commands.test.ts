@@ -72,7 +72,7 @@ describe("utility commands", () => {
     expect(embed.description).toContain("onboard them first");
   });
 
-it("ProfileCommand renders stats, roles, and deboard note when profile exists", async () => {
+  it("ProfileCommand renders stats, roles, and deboard note when profile exists", async () => {
     const command = new ProfileCommand();
     const interaction = createMockInteraction({
       user: { id: "invoker-id" },
