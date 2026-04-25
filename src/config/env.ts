@@ -15,6 +15,8 @@ export interface AppConfig {
   };
   channels: {
     approvalChannelId: string | null;
+    remindersChannelId: string | null;
+    logsChannelId: string | null;
   };
   roles: {
     owners: string;
@@ -155,6 +157,8 @@ export const loadAppConfig = (): AppConfig => {
     },
     channels: {
       approvalChannelId: readOptionalEnv("APPROVAL_CHANNEL_ID"),
+      remindersChannelId: readOptionalEnv("REMINDERS_CHANNEL_ID"),
+      logsChannelId: readOptionalEnv("LOGS_CHANNEL_ID"),
     },
     roles: {
       owners: readWithDefault("ROLE_OWNER_ID", DEFAULT_ROLE_IDS.owners),
