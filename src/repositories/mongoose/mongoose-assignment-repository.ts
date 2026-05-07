@@ -123,4 +123,21 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
       { new: true },
     ).exec();
   }
+
+  async pushDeadlinesByDiscordUserId(discordUserId: string, offsetMs: number): Promise<number> {
+    const result = await AssignmentModel.updateMany(
+      { discordUserId, status: "PENDING" },
+      [
+        {
+          $set: {
+            deadline: {
+              $toDate: { $add: [{ $toLong: "$deadline" }, offsetMs] },
+            },
+          },
+        },
+      ],
+    ).exec();
+
+    return result.modifiedCount;
+  }
 }
