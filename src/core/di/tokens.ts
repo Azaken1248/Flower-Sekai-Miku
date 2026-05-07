@@ -3,6 +3,7 @@ import type { Client } from "discord.js";
 import type { FlowerSekaiBot } from "../../app/bot";
 import type { CommandLoader } from "../../commands/loader/command-loader";
 import type { InteractionCreateHandler } from "../../commands/handlers/interaction-create-handler";
+import type { SubmitApprovalHandler } from "../../commands/handlers/submit-approval-handler";
 import type { SlashCommand } from "../../commands/contracts/slash-command";
 import type { CommandRegistry } from "../../commands/registry/command-registry";
 import type { AppConfig } from "../../config/env";
@@ -43,5 +44,7 @@ export const TOKENS = {
   commandLoader: createToken<CommandLoader>("commandLoader"),
   commandDeployer: createToken<CommandDeployer>("commandDeployer"),
   interactionCreateHandler: createToken<InteractionCreateHandler>("interactionCreateHandler"),
+  submitApprovalHandler: createToken<SubmitApprovalHandler>("submitApprovalHandler"),
   bot: createToken<FlowerSekaiBot>("bot"),
 } as const;
+
