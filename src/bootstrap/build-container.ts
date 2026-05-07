@@ -6,6 +6,7 @@ import { StrikeAppealHandler } from "../commands/handlers/strike-appeal-handler"
 import { SubmitApprovalHandler } from "../commands/handlers/submit-approval-handler";
 import { CommandLoader } from "../commands/loader/command-loader";
 import { buildCommandModules } from "../commands/modules";
+import { HelpCommand } from "../commands/modules/utility/help.command";
 import { CommandRegistry } from "../commands/registry/command-registry";
 import { loadAppConfig } from "../config/env";
 import { ServiceContainer } from "../core/di/container";
@@ -132,7 +133,11 @@ export const buildContainer = (): ServiceContainer => {
   );
 
   container.registerSingleton(TOKENS.commands, (resolver) => {
-    return buildCommandModules(resolver.resolve(TOKENS.config));
+    const registry = resolver.resolve(TOKENS.commandRegistry);
+    return [
+      ...buildCommandModules(resolver.resolve(TOKENS.config)),
+      new HelpCommand(registry),
+    ];
   });
 
   container.registerSingleton(TOKENS.commandRegistry, () => new CommandRegistry());
