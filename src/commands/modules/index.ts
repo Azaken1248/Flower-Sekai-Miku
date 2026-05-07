@@ -1,9 +1,12 @@
 import type { AppConfig } from "../../config/env";
+import { AppealStrikeCommand } from "./crew/appealstrike.command";
 import { DeboardCommand } from "./crew/deboard.command";
 import { EndHiatusCommand } from "./crew/endhiatus.command";
 import { HiatusCommand } from "./crew/hiatus.command";
 import type { SlashCommand } from "../contracts/slash-command";
 import { OnboardCommand } from "./crew/onboard.command";
+import { RemoveStrikeCommand } from "./crew/removestrike.command";
+import { StrikeCommand } from "./crew/strike.command";
 import { AssignCommand } from "./tasks/assign.command";
 import { ExtensionCommand } from "./tasks/extension.command";
 import { RemoveTaskCommand } from "./tasks/remove.command";
@@ -37,6 +40,9 @@ export const buildCommandModules = (config: AppConfig): SlashCommand[] => {
     new PingCommand(),
     new UptimeCommand(),
     new HelloCommand(),
+    new StrikeCommand(),
+    new RemoveStrikeCommand(),
+    new AppealStrikeCommand(),
   ];
 };
 
