@@ -122,4 +122,53 @@ describe("utility commands", () => {
       field.name.includes("Deboard Note") && field.value.includes("Moved to a different team.")
     )).toBe(true);
   });
+
+  it("ProfileCommand shows hiatus details when user is on hiatus", async () => {
+    const command = new ProfileCommand();
+    const interaction = createMockInteraction({
+      user: { id: "user-1" },
+      inGuild: true,
+    });
+
+    const context = createMockCommandContext();
+    (context.userService.getProfile as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      user: {
+        joinedAt: new Date("2026-01-01T00:00:00.000Z"),
+        deboardedAt: null,
+        deboardedMessage: "",
+        isDeboarded: false,
+        isOnHiatus: true,
+        hiatusStartedAt: new Date("2026-05-01T00:00:00.000Z"),
+        hiatusReason: "Taking exams",
+        strikes: 0,
+      },
+      assignmentStats: {
+        total: 5,
+        pending: 2,
+        completed: 3,
+        late: 0,
+        excused: 0,
+      },
+    });
+
+    await command.execute(interaction as never, context);
+
+    const payload = interaction.reply.mock.calls[0][0];
+    const embed = payload.embeds[0].toJSON();
+
+    // Status shows ON HIATUS
+    expect(embed.fields?.some((f: { name: string; value: string }) =>
+      f.name.includes("Roster Status") && f.value.includes("ON HIATUS")
+    )).toBe(true);
+
+    // Hiatus since date
+    expect(embed.fields?.some((f: { name: string; value: string }) =>
+      f.name === "◈ Hiatus Since"
+    )).toBe(true);
+
+    // Hiatus reason
+    expect(embed.fields?.some((f: { name: string; value: string }) =>
+      f.name === "◈ Hiatus Reason" && f.value.includes("Taking exams")
+    )).toBe(true);
+  });
 });

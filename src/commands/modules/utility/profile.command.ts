@@ -57,18 +57,17 @@ export class ProfileCommand implements SlashCommand {
     const deboardedUnix = profile.user.deboardedAt
       ? Math.floor(profile.user.deboardedAt.getTime() / 1000)
       : null;
-    const tone = profile.user.isDeboarded ? "mist" : "bloom";
-
-    const statusText = profile.user.isDeboarded ? "Deboarded" : "Active";
-    const hiatusText = profile.user.isOnHiatus ? "Yes" : "No";
+    const statusText = profile.user.isDeboarded ? "Deboarded" : profile.user.isOnHiatus ? "On Hiatus" : "Active";
+    const tone = profile.user.isDeboarded ? "mist" : profile.user.isOnHiatus ? "sky" : "bloom";
+    const hiatusText = profile.user.isOnHiatus ? "❄️ ON HIATUS" : "No ";
     const strikeText = `${profile.user.strikes}/3`;
 
     const assignedRoles: string[] = [];
-    
+
     if (interaction.inGuild() && interaction.guild) {
       try {
         const member = await interaction.guild.members.fetch(targetUser.id);
-        
+
         if (member.roles.cache.has(context.config.roles.owners)) {
           assignedRoles.push("Owner");
         }
@@ -127,6 +126,31 @@ export class ProfileCommand implements SlashCommand {
         value: `> ${normalizeDeboardMessage(profile.user.deboardedMessage).slice(0, 1024)}`,
         inline: false,
       });
+    }
+
+    if (profile.user.isOnHiatus) {
+      const hiatusFields: { name: string; value: string; inline: boolean }[] = [];
+
+      if (profile.user.hiatusStartedAt) {
+        const hiatusUnix = Math.floor(profile.user.hiatusStartedAt.getTime() / 1000);
+        hiatusFields.push({
+          name: "◈ Hiatus Since",
+          value: `> <t:${hiatusUnix}:D> (<t:${hiatusUnix}:R>)`,
+          inline: true,
+        });
+      }
+
+      if (profile.user.hiatusReason) {
+        hiatusFields.push({
+          name: "◈ Hiatus Reason",
+          value: `> ${profile.user.hiatusReason.slice(0, 1024)}`,
+          inline: false,
+        });
+      }
+
+      if (hiatusFields.length > 0) {
+        embed.addFields(...hiatusFields);
+      }
     }
 
     embed.setThumbnail(targetUser.displayAvatarURL({ size: 256 }));
