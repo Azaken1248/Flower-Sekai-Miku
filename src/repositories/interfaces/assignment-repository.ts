@@ -27,4 +27,5 @@ export interface AssignmentRepository {
   countByDiscordUserId(discordUserId: string, status?: AssignmentStatus): Promise<number>;
   deleteById(id: string): Promise<boolean>;
   transfer(id: string, newUserId: string, newDiscordUserId: string): Promise<IAssignment | null>;
+  pushDeadlinesByDiscordUserId(discordUserId: string, offsetMs: number): Promise<number>;
 }
