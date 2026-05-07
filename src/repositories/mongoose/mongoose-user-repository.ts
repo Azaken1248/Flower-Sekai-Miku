@@ -63,6 +63,14 @@ export class MongooseUserRepository implements UserRepository {
     ).exec();
   }
 
+  async incrementStrikes(discordId: string, amount: number): Promise<IUser | null> {
+    return UserModel.findOneAndUpdate(
+      { discordId },
+      { $inc: { strikes: amount } },
+      { new: true },
+    ).exec();
+  }
+
   async appendAssignment(discordId: string, assignmentId: string): Promise<void> {
     if (!Types.ObjectId.isValid(assignmentId)) {
       throw new Error("Invalid assignment id.");
