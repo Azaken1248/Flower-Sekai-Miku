@@ -65,7 +65,7 @@ describe("SubmitCommand", () => {
     expect(payload.embeds[0].toJSON().description).toContain("Submission Failed");
   });
 
-  it("replies with error when no approval channel is configured", async () => {
+  it("posts approval in current channel even when no approval channel is configured", async () => {
     const command = new SubmitCommand();
     const interaction = createMockInteraction({
       stringOptions: { assignment_id: "assignment-1" },
@@ -87,16 +87,25 @@ describe("SubmitCommand", () => {
 
     await command.execute(interaction as never, context);
 
-    const payload = interaction.reply.mock.calls[0][0];
-    expect(payload.embeds[0].toJSON().description).toContain("No approval channel is configured");
+    // Approval embed posted in the current channel
+    expect(interaction.channel.send).toHaveBeenCalledTimes(1);
+    const sendPayload = interaction.channel.send.mock.calls[0][0];
+    expect(sendPayload.content).toContain(context.config.roles.owners);
+    expect(sendPayload.embeds).toBeDefined();
+    expect(sendPayload.components).toBeDefined();
+
+    // Ephemeral confirmation to the user
+    const replyPayload = interaction.reply.mock.calls[0][0];
+    expect(replyPayload.embeds[0].toJSON().description).toContain("submitted for review");
+    expect(replyPayload.flags).toBe(MessageFlags.Ephemeral);
   });
 
-  it("sends approval embed to channel and replies with confirmation on success", async () => {
+  it("posts in current channel and cross-posts to approval channel when configured", async () => {
     const command = new SubmitCommand();
-    const mockSend = vi.fn().mockResolvedValue(undefined);
+    const mockCrossPostSend = vi.fn().mockResolvedValue(undefined);
     const mockFetch = vi.fn().mockResolvedValue({
       isTextBased: () => true,
-      send: mockSend,
+      send: mockCrossPostSend,
     });
 
     const interaction = createMockInteraction({
@@ -124,18 +133,23 @@ describe("SubmitCommand", () => {
 
     await command.execute(interaction as never, context);
 
+    // Current channel got the primary approval embed with role ping
+    expect(interaction.channel.send).toHaveBeenCalledTimes(1);
+    const sendPayload = interaction.channel.send.mock.calls[0][0];
+    expect(sendPayload.content).toContain(context.config.roles.owners);
+
+    // Cross-posted to the dedicated approval channel
     expect(mockFetch).toHaveBeenCalledWith("approval-channel-id");
-    expect(mockSend).toHaveBeenCalledWith(
+    expect(mockCrossPostSend).toHaveBeenCalledWith(
       expect.objectContaining({
         embeds: expect.any(Array),
         components: expect.any(Array),
       }),
     );
 
-    const payload = interaction.reply.mock.calls[0][0];
-    const embed = payload.embeds[0].toJSON();
-    expect(embed.description).toContain("submitted for review");
-    expect(embed.title).toBe("Miku Submission Desk");
-    expect(payload.flags).toBe(MessageFlags.Ephemeral);
+    // Ephemeral confirmation to the user
+    const replyPayload = interaction.reply.mock.calls[0][0];
+    expect(replyPayload.embeds[0].toJSON().description).toContain("submitted for review");
+    expect(replyPayload.flags).toBe(MessageFlags.Ephemeral);
   });
 });

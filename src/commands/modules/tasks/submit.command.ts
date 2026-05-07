@@ -65,46 +65,10 @@ export class SubmitCommand implements SlashCommand {
       return;
     }
 
-    const approvalChannelId = context.config.channels.approvalChannelId;
-    if (!approvalChannelId) {
-      await interaction.reply({
-        embeds: [
-          createMikuEmbed({
-            title: "Miku Submission Desk",
-            description: "> No approval channel is configured. Ask an owner to set `APPROVAL_CHANNEL_ID`.",
-            tone: "wave",
-          }),
-        ],
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    let approvalChannel: TextChannel;
-    try {
-      const fetched = await interaction.client.channels.fetch(approvalChannelId);
-      if (!fetched || !fetched.isTextBased() || !("send" in fetched)) {
-        throw new Error("Channel is not a sendable text channel.");
-      }
-
-      approvalChannel = fetched as TextChannel;
-    } catch {
-      await interaction.reply({
-        embeds: [
-          createMikuEmbed({
-            title: "Miku Submission Desk",
-            description: "> I could not reach the approval channel. Please notify an owner.",
-            tone: "wave",
-          }),
-        ],
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
     const assignment = result.assignment;
     const unixDeadline = Math.floor(assignment.deadline.getTime() / 1000);
     const roleLabel = resolveRoleLabel(assignment.roleId, context.config.roles.specialized);
+    const ownerRoleId = context.config.roles.owners;
 
     const approvalEmbed = createMikuEmbed({
       title: "Miku Submission Desk — Awaiting Review",
@@ -151,15 +115,33 @@ export class SubmitCommand implements SlashCommand {
         .setStyle(ButtonStyle.Danger),
     );
 
-    try {
-      await approvalChannel.send({
-        embeds: [approvalEmbed],
-        components: [actionRow],
+    const approvalPayload = {
+      content: `<@&${ownerRoleId}> — a submission is awaiting review!`,
+      embeds: [approvalEmbed],
+      components: [actionRow],
+    };
+
+    // Post the approval embed in the current channel/thread
+    if (!interaction.channel || !("send" in interaction.channel)) {
+      await interaction.reply({
+        embeds: [
+          createMikuEmbed({
+            title: "Miku Submission Desk",
+            description: "> I can't post the approval embed here. Make sure I have permission to send messages in this channel.",
+            tone: "wave",
+          }),
+        ],
+        flags: MessageFlags.Ephemeral,
       });
+      return;
+    }
+
+    try {
+      await interaction.channel.send(approvalPayload);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown send failure.";
-      context.logger.error("Failed to send approval embed to channel.", {
-        approvalChannelId,
+      context.logger.error("Failed to send approval embed to current channel.", {
+        channelId: interaction.channelId,
         assignmentId: assignment.id,
         errorMessage,
       });
@@ -168,13 +150,33 @@ export class SubmitCommand implements SlashCommand {
         embeds: [
           createMikuEmbed({
             title: "Miku Submission Desk",
-            description: "> I could not send the approval request to the review channel. Please try again.",
+            description: "> I could not post the approval request in this channel. Please check my permissions and try again.",
             tone: "wave",
           }),
         ],
         flags: MessageFlags.Ephemeral,
       });
       return;
+    }
+
+    // If a dedicated approval channel is configured, cross-post there too
+    const approvalChannelId = context.config.channels.approvalChannelId;
+    if (approvalChannelId && approvalChannelId !== interaction.channelId) {
+      try {
+        const approvalChannel = await interaction.client.channels.fetch(approvalChannelId);
+        if (approvalChannel && "send" in approvalChannel) {
+          await (approvalChannel as TextChannel).send({
+            embeds: [approvalEmbed],
+            components: [actionRow],
+          });
+        }
+      } catch {
+        // Cross-post failure is non-critical — the primary post already succeeded
+        context.logger.warn("Failed to cross-post approval embed to approval channel.", {
+          approvalChannelId,
+          assignmentId: assignment.id,
+        });
+      }
     }
 
     await interaction.reply({

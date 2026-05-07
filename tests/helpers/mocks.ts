@@ -153,6 +153,10 @@ export const createMockInteraction = (input: MockInteractionInput = {}) => {
     deferred: input.deferred ?? false,
     guild,
     guildId: input.inGuild === false ? null : (input.guildId ?? "guild-id"),
+    channelId: "channel-id",
+    channel: {
+      send: vi.fn().mockResolvedValue(undefined),
+    },
     inGuild: vi.fn(() => input.inGuild !== false),
     reply: vi.fn().mockResolvedValue(undefined),
     followUp: vi.fn().mockResolvedValue(undefined),

@@ -110,7 +110,10 @@ export class AppealStrikeCommand implements SlashCommand {
         .setStyle(ButtonStyle.Danger),
     );
 
+    const ownerRoleId = context.config.roles.owners;
+
     await interaction.reply({
+      content: `<@&${ownerRoleId}> — a strike appeal needs review!`,
       embeds: [
         createMikuEmbed({
           title: "Miku Appeal Desk — Appeal Filed 📋",
