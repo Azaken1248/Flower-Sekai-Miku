@@ -5,6 +5,7 @@ import type { AppConfig } from "../config/env";
 import type { Logger } from "../core/logger/logger";
 import { createMikuEmbed } from "../presentation/miku-embed";
 import type { TaskReminderRepository } from "../repositories/interfaces/task-reminder-repository";
+import type { UserRepository } from "../repositories/interfaces/user-repository";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -24,6 +25,7 @@ export class TaskReminderDispatcherService {
   constructor(
     private readonly appConfig: AppConfig,
     private readonly taskReminderRepository: TaskReminderRepository,
+    private readonly userRepository: UserRepository,
     private readonly discordClient: Client,
     private readonly logger: Logger,
   ) {}
@@ -85,6 +87,17 @@ export class TaskReminderDispatcherService {
       });
 
       for (const reminder of dueReminders) {
+        const user = await this.userRepository.findByDiscordId(reminder.discordUserId);
+        if (user?.isOnHiatus) {
+          // Release the lock so it can be re-claimed after hiatus ends
+          await this.taskReminderRepository.markFailed(reminder.id, "User is on hiatus — reminder deferred.");
+          this.logger.info("Skipped reminder for user on hiatus.", {
+            reminderId: reminder.id,
+            discordUserId: reminder.discordUserId,
+          });
+          continue;
+        }
+
         await this.dispatchReminder(reminder.id, {
           discordUserId: reminder.discordUserId,
           taskName: reminder.taskName,
