@@ -8,7 +8,9 @@ import { RemoveTaskCommand } from "./tasks/remove.command";
 import { SubmitCommand } from "./tasks/submit.command";
 import { TransferTaskCommand } from "./tasks/transfer.command";
 import { TasksCommand } from "./tasks/tasks.command";
+import { CheckFreeCommand } from "./utility/checkfree.command";
 import { HelloCommand } from "./utility/hello.command";
+import { HistoryCommand } from "./utility/history.command";
 import { PingCommand } from "./utility/ping.command";
 import { ProfileCommand } from "./utility/profile.command";
 import { UptimeCommand } from "./utility/uptime.command";
@@ -25,9 +27,12 @@ export const buildCommandModules = (config: AppConfig): SlashCommand[] => {
     new RemoveTaskCommand(adminRoleIds),
     new TransferTaskCommand(adminRoleIds),
     new TasksCommand(adminRoleIds),
+    new CheckFreeCommand(),
+    new HistoryCommand(adminRoleIds, config.roles.specialized),
     new ProfileCommand(),
     new PingCommand(),
     new UptimeCommand(),
     new HelloCommand(),
   ];
-};
+};
+
