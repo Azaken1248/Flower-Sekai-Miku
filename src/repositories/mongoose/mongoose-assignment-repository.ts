@@ -39,12 +39,8 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
     return AssignmentModel.findByIdAndUpdate(
       id,
       {
-        $set: {
-          deadline: newDeadline,
-        },
-        $inc: {
-          extensionsGranted: 1,
-        },
+        $set: { deadline: newDeadline },
+        $inc: { extensionsGranted: 1 },
       },
       { new: true },
     ).exec();
@@ -57,11 +53,7 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
 
     return AssignmentModel.findByIdAndUpdate(
       id,
-      {
-        $set: {
-          status,
-        },
-      },
+      { $set: { status } },
       { new: true },
     ).exec();
   }
@@ -80,15 +72,33 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
   }
 
   async countByDiscordUserId(discordUserId: string, status?: AssignmentStatus): Promise<number> {
-    const query = status
-      ? {
-          discordUserId,
-          status,
-        }
-      : {
-          discordUserId,
-        };
-
+    const query = status ? { discordUserId, status } : { discordUserId };
     return AssignmentModel.countDocuments(query).exec();
+  }
+
+  async deleteById(id: string): Promise<boolean> {
+    if (!Types.ObjectId.isValid(id)) {
+      return false;
+    }
+
+    const result = await AssignmentModel.deleteOne({ _id: id }).exec();
+    return result.deletedCount === 1;
+  }
+
+  async transfer(id: string, newUserId: string, newDiscordUserId: string): Promise<IAssignment | null> {
+    if (!Types.ObjectId.isValid(id)) {
+      return null;
+    }
+
+    return AssignmentModel.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          userId: new Types.ObjectId(newUserId),
+          discordUserId: newDiscordUserId,
+        },
+      },
+      { new: true },
+    ).exec();
   }
 }
