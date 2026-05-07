@@ -45,7 +45,7 @@ export interface SubmitTaskInput {
   bypassUserCheck?: boolean;
 }
 
-export type SubmitTaskStatus = "submitted" | "notFound" | "notOwner" | "notPending";
+export type SubmitTaskStatus = "submitted" | "notFound" | "notOwner" | "notPending" | "onHiatus";
 
 export interface SubmitTaskResult {
   status: SubmitTaskStatus;
@@ -65,6 +65,10 @@ export class AssignmentService {
     const user = await this.userRepository.findByDiscordId(input.discordUserId);
     if (!user || user.isDeboarded) {
       throw new Error("Target user is not onboarded as an active crew member.");
+    }
+
+    if (user.isOnHiatus) {
+      throw new Error("Target user is currently on hiatus and cannot receive new assignments.");
     }
 
     const assignment = await this.assignmentRepository.create({
@@ -110,6 +114,11 @@ export class AssignmentService {
 
     if (assignment.isTimeLimited) {
       return { allowed: false, reason: "This assignment is marked as time-limited and cannot be auto-extended. Ask an owner for manual override." };
+    }
+
+    const user = await this.userRepository.findByDiscordId(assignment.discordUserId);
+    if (user?.isOnHiatus) {
+      return { allowed: false, reason: "You are currently on hiatus. End your hiatus with `/endhiatus` before requesting extensions." };
     }
 
     if (input.newDeadline <= assignment.deadline) {
@@ -186,6 +195,10 @@ export class AssignmentService {
       return { success: false, reason: "Target member is not active or onboarded." };
     }
 
+    if (newUser.isOnHiatus) {
+      return { success: false, reason: "Target member is currently on hiatus and cannot receive transfers." };
+    }
+
     await this.userRepository.removeAssignment(assignment.discordUserId, assignment.id);
     await this.userRepository.appendAssignment(newDiscordUserId, assignment.id);
 
@@ -231,6 +244,14 @@ export class AssignmentService {
       return {
         status: "notPending",
         reason: `This assignment is currently marked as \`${assignment.status}\` and cannot be submitted for review.`,
+      };
+    }
+
+    const user = await this.userRepository.findByDiscordId(assignment.discordUserId);
+    if (user?.isOnHiatus) {
+      return {
+        status: "onHiatus",
+        reason: "You are currently on hiatus. End your hiatus with `/endhiatus` before submitting tasks.",
       };
     }
 
