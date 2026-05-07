@@ -58,9 +58,10 @@ export class ProfileCommand implements SlashCommand {
       ? Math.floor(profile.user.deboardedAt.getTime() / 1000)
       : null;
     const statusText = profile.user.isDeboarded ? "Deboarded" : profile.user.isOnHiatus ? "On Hiatus" : "Active";
-    const tone = profile.user.isDeboarded ? "mist" : profile.user.isOnHiatus ? "sky" : "bloom";
+    const isMaxStrikes = profile.user.strikes >= 3;
+    const tone = isMaxStrikes ? "wave" : profile.user.isDeboarded ? "mist" : profile.user.isOnHiatus ? "sky" : "bloom";
     const hiatusText = profile.user.isOnHiatus ? "❄️ ON HIATUS" : "No ";
-    const strikeText = `${profile.user.strikes}/3`;
+    const strikeText = isMaxStrikes ? `⚠️ ${profile.user.strikes}/3` : `${profile.user.strikes}/3`;
 
     const assignedRoles: string[] = [];
 
@@ -151,6 +152,14 @@ export class ProfileCommand implements SlashCommand {
       if (hiatusFields.length > 0) {
         embed.addFields(...hiatusFields);
       }
+    }
+
+    if (isMaxStrikes) {
+      embed.addFields({
+        name: "◈ ⚠️ Maximum Strikes",
+        value: "> This member has reached the maximum number of strikes. If you believe a strike is unfair, use `/appealstrike` to request a review.",
+        inline: false,
+      });
     }
 
     embed.setThumbnail(targetUser.displayAvatarURL({ size: 256 }));
