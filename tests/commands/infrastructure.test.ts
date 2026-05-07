@@ -20,6 +20,7 @@ describe("Infrastructure & Command Registration", () => {
         "ping",
         "profile",
         "remove-task",
+        "submit",
         "tasks",
         "transfer-task",
         "uptime",

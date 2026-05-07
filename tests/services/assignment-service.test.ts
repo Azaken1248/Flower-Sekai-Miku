@@ -142,4 +142,102 @@ describe("AssignmentService", () => {
       expect((mockReminderService as any).rescheduleForAssignment).toHaveBeenCalled();
     });
   });
+
+  describe("submitTask", () => {
+    it("returns notFound when assignment does not exist", async () => {
+      (mockAssignmentRepo as any).findById.mockResolvedValue(null);
+
+      const result = await service.submitTask({
+        assignmentId: "fake-id",
+        discordUserId: "user-1",
+      });
+
+      expect(result.status).toBe("notFound");
+    });
+
+    it("returns notOwner when caller does not own the assignment", async () => {
+      (mockAssignmentRepo as any).findById.mockResolvedValue({
+        id: "assignment-1",
+        discordUserId: "other-user",
+        status: "PENDING",
+      });
+
+      const result = await service.submitTask({
+        assignmentId: "assignment-1",
+        discordUserId: "user-1",
+      });
+
+      expect(result.status).toBe("notOwner");
+    });
+
+    it("returns notPending when assignment is not PENDING", async () => {
+      (mockAssignmentRepo as any).findById.mockResolvedValue({
+        id: "assignment-1",
+        discordUserId: "user-1",
+        status: "COMPLETED",
+      });
+
+      const result = await service.submitTask({
+        assignmentId: "assignment-1",
+        discordUserId: "user-1",
+      });
+
+      expect(result.status).toBe("notPending");
+    });
+
+    it("returns submitted with assignment on success", async () => {
+      const mockAssignment = {
+        id: "assignment-1",
+        discordUserId: "user-1",
+        status: "PENDING",
+      };
+      (mockAssignmentRepo as any).findById.mockResolvedValue(mockAssignment);
+
+      const result = await service.submitTask({
+        assignmentId: "assignment-1",
+        discordUserId: "user-1",
+      });
+
+      expect(result.status).toBe("submitted");
+      expect(result.assignment).toBe(mockAssignment);
+    });
+
+    it("allows bypass of ownership check", async () => {
+      const mockAssignment = {
+        id: "assignment-1",
+        discordUserId: "other-user",
+        status: "PENDING",
+      };
+      (mockAssignmentRepo as any).findById.mockResolvedValue(mockAssignment);
+
+      const result = await service.submitTask({
+        assignmentId: "assignment-1",
+        discordUserId: "admin-user",
+        bypassUserCheck: true,
+      });
+
+      expect(result.status).toBe("submitted");
+    });
+  });
+
+  describe("approveTask", () => {
+    it("updates status to COMPLETED and cancels reminders", async () => {
+      const updatedAssignment = { id: "assignment-1", status: "COMPLETED" };
+      (mockAssignmentRepo as any).updateStatus = vi.fn().mockResolvedValue(updatedAssignment);
+
+      const result = await service.approveTask("assignment-1");
+
+      expect(result).toBe(updatedAssignment);
+      expect((mockAssignmentRepo as any).updateStatus).toHaveBeenCalledWith("assignment-1", "COMPLETED");
+      expect((mockReminderService as any).cancelRemindersForAssignment).toHaveBeenCalledWith("assignment-1");
+    });
+
+    it("returns null if assignment could not be updated", async () => {
+      (mockAssignmentRepo as any).updateStatus = vi.fn().mockResolvedValue(null);
+
+      const result = await service.approveTask("fake-id");
+
+      expect(result).toBeNull();
+    });
+  });
 });

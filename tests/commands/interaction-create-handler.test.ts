@@ -2,30 +2,41 @@ import { MessageFlags } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 
 import { InteractionCreateHandler } from "../../src/commands/handlers/interaction-create-handler";
+import type { SubmitApprovalHandler } from "../../src/commands/handlers/submit-approval-handler";
 import { CommandRegistry } from "../../src/commands/registry/command-registry";
 import { createMockCommandContext, createMockInteraction, createMockLogger } from "../helpers/mocks";
 
+const createMockSubmitApprovalHandler = (): SubmitApprovalHandler => ({
+  canHandle: vi.fn().mockReturnValue(false),
+  handle: vi.fn().mockResolvedValue(undefined),
+}) as unknown as SubmitApprovalHandler;
+
 describe("InteractionCreateHandler", () => {
-  it("ignores non-chat interactions", async () => {
+  it("ignores non-chat non-button interactions", async () => {
     const registry = new CommandRegistry();
-    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), createMockLogger());
+    const mockApproval = createMockSubmitApprovalHandler();
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, createMockLogger());
 
     const interaction = {
       isChatInputCommand: vi.fn().mockReturnValue(false),
+      isButton: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
 
+    expect(interaction.isButton).toHaveBeenCalledTimes(1);
     expect(interaction.isChatInputCommand).toHaveBeenCalledTimes(1);
   });
 
   it("replies when command is not registered", async () => {
     const registry = new CommandRegistry();
-    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), createMockLogger());
+    const mockApproval = createMockSubmitApprovalHandler();
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, createMockLogger());
 
     const interaction = {
       ...createMockInteraction({ commandName: "unknown" }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
+      isButton: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -44,7 +55,8 @@ describe("InteractionCreateHandler", () => {
       execute,
     } as never);
 
-    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), createMockLogger());
+    const mockApproval = createMockSubmitApprovalHandler();
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, createMockLogger());
 
     const interaction = {
       ...createMockInteraction({
@@ -54,6 +66,7 @@ describe("InteractionCreateHandler", () => {
         user: { id: "regular-user" },
       }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
+      isButton: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -71,7 +84,8 @@ describe("InteractionCreateHandler", () => {
       execute,
     } as never);
 
-    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), createMockLogger());
+    const mockApproval = createMockSubmitApprovalHandler();
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, createMockLogger());
 
     const interaction = {
       ...createMockInteraction({
@@ -81,6 +95,7 @@ describe("InteractionCreateHandler", () => {
         user: { id: "1213817849693478972" },
       }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
+      isButton: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -96,11 +111,13 @@ describe("InteractionCreateHandler", () => {
       execute: vi.fn().mockRejectedValue(new Error("expected failure")),
     } as never);
 
-    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), logger);
+    const mockApproval = createMockSubmitApprovalHandler();
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, logger);
 
     const interaction = {
       ...createMockInteraction({ commandName: "throws", replied: false, deferred: false }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
+      isButton: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -116,15 +133,41 @@ describe("InteractionCreateHandler", () => {
       execute: vi.fn().mockRejectedValue(new Error("expected failure")),
     } as never);
 
-    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), createMockLogger());
+    const mockApproval = createMockSubmitApprovalHandler();
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, createMockLogger());
 
     const interaction = {
       ...createMockInteraction({ commandName: "throws", replied: true, deferred: false }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
+      isButton: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
 
     expect(interaction.followUp).toHaveBeenCalledTimes(1);
   });
+
+  it("routes button interactions to submit approval handler when canHandle returns true", async () => {
+    const registry = new CommandRegistry();
+    const mockApproval = {
+      canHandle: vi.fn().mockReturnValue(true),
+      handle: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SubmitApprovalHandler;
+    const handler = new InteractionCreateHandler(registry, createMockCommandContext(), mockApproval, createMockLogger());
+
+    const interaction = {
+      isButton: vi.fn().mockReturnValue(true),
+      isChatInputCommand: vi.fn().mockReturnValue(false),
+      customId: "submit_approve:assignment-1",
+      user: { id: "reviewer-id" },
+      replied: false,
+      deferred: false,
+    };
+
+    await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
+
+    expect(mockApproval.canHandle).toHaveBeenCalledWith("submit_approve:assignment-1");
+    expect(mockApproval.handle).toHaveBeenCalledWith(interaction);
+  });
 });
+

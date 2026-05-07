@@ -182,6 +182,8 @@ export const createMockCommandContext = (
       removeTask: vi.fn(),
       transferTask: vi.fn(),
       getPendingTasks: vi.fn(),
+      submitTask: vi.fn(),
+      approveTask: vi.fn(),
     } as unknown as CommandExecutionContext["assignmentService"],
     configCacheService: {
       getConfig: vi.fn().mockReturnValue({
