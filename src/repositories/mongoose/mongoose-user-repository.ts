@@ -8,6 +8,10 @@ export class MongooseUserRepository implements UserRepository {
     return UserModel.findOne({ discordId }).exec();
   }
 
+  async findAllActive(): Promise<IUser[]> {
+    return UserModel.find({ isDeboarded: false }).exec();
+  }
+
   async create(input: CreateUserInput): Promise<IUser> {
     return UserModel.create({
       discordId: input.discordId,
