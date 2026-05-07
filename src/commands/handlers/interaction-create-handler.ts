@@ -10,8 +10,10 @@ import {
 import type { Logger } from "../../core/logger/logger";
 import { createMikuEmbed } from "../../presentation/miku-embed";
 import { hasPermissionBypass } from "../../security/permission-bypass";
+import type { UserRepository } from "../../repositories/interfaces/user-repository";
 import type { CommandExecutionContext } from "../contracts/command-execution-context";
 import { CommandRegistry } from "../registry/command-registry";
+import type { StrikeAppealHandler } from "./strike-appeal-handler";
 import type { SubmitApprovalHandler } from "./submit-approval-handler";
 
 export class InteractionCreateHandler {
@@ -19,6 +21,8 @@ export class InteractionCreateHandler {
     private readonly commandRegistry: CommandRegistry,
     private readonly commandContext: CommandExecutionContext,
     private readonly submitApprovalHandler: SubmitApprovalHandler,
+    private readonly strikeAppealHandler: StrikeAppealHandler,
+    private readonly userRepository: UserRepository,
     private readonly logger: Logger,
   ) {}
 
@@ -72,6 +76,9 @@ export class InteractionCreateHandler {
 
     try {
       await command.execute(interaction, this.commandContext);
+
+      // After successful command execution, check for max-strike warning
+      await this.sendStrikeWarningIfNeeded(interaction);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unexpected command failure.";
 
@@ -134,6 +141,55 @@ export class InteractionCreateHandler {
         }
       }
       return;
+    }
+
+    if (this.strikeAppealHandler.canHandle(interaction.customId)) {
+      try {
+        await this.strikeAppealHandler.handle(interaction);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unexpected button handler failure.";
+        this.logger.error("Strike appeal button handler failed.", {
+          customId: interaction.customId,
+          userId: interaction.user.id,
+          message,
+        });
+
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            embeds: [
+              createMikuEmbed({
+                title: "Miku Error Report",
+                description: `Button action failed: ${message}`,
+                tone: "wave",
+              }),
+            ],
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+      }
+      return;
+    }
+  }
+
+  private async sendStrikeWarningIfNeeded(
+    interaction: ChatInputCommandInteraction,
+  ): Promise<void> {
+    try {
+      const user = await this.userRepository.findByDiscordId(interaction.user.id);
+      if (!user || user.strikes < 3) return;
+
+      await interaction.followUp({
+        embeds: [
+          createMikuEmbed({
+            title: "⚠️ Miku Strike Warning",
+            description: `> <@${interaction.user.id}>, you currently have **3/3 strikes**. This is the maximum — please take this seriously. If you believe a strike is unfair, you can appeal it with \`/appealstrike\`. Let's work together to get things back on track! 🌸`,
+            tone: "wave",
+          }),
+        ],
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch {
+      // Warning failures should never break the command flow
     }
   }
 
