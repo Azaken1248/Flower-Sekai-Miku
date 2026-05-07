@@ -7,6 +7,7 @@ export interface CreateUserInput {
 
 export interface UserRepository {
   findByDiscordId(discordId: string): Promise<IUser | null>;
+  findAllActive(): Promise<IUser[]>;
   create(input: CreateUserInput): Promise<IUser>;
   reactivate(discordId: string, username: string): Promise<IUser | null>;
   markDeboarded(discordId: string, message?: string): Promise<IUser | null>;
