@@ -5,6 +5,7 @@ import { OnboardCommand } from "./crew/onboard.command";
 import { AssignCommand } from "./tasks/assign.command";
 import { ExtensionCommand } from "./tasks/extension.command";
 import { RemoveTaskCommand } from "./tasks/remove.command";
+import { SubmitCommand } from "./tasks/submit.command";
 import { TransferTaskCommand } from "./tasks/transfer.command";
 import { TasksCommand } from "./tasks/tasks.command";
 import { HelloCommand } from "./utility/hello.command";
@@ -20,6 +21,7 @@ export const buildCommandModules = (config: AppConfig): SlashCommand[] => {
     new DeboardCommand(),
     new AssignCommand(adminRoleIds, config.roles.specialized),
     new ExtensionCommand(),
+    new SubmitCommand(),
     new RemoveTaskCommand(adminRoleIds),
     new TransferTaskCommand(adminRoleIds),
     new TasksCommand(adminRoleIds),
@@ -28,4 +30,4 @@ export const buildCommandModules = (config: AppConfig): SlashCommand[] => {
     new UptimeCommand(),
     new HelloCommand(),
   ];
-};
+};
