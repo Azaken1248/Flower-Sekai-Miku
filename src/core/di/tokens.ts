@@ -3,6 +3,7 @@ import type { Client } from "discord.js";
 import type { FlowerSekaiBot } from "../../app/bot";
 import type { CommandLoader } from "../../commands/loader/command-loader";
 import type { InteractionCreateHandler } from "../../commands/handlers/interaction-create-handler";
+import type { StrikeAppealHandler } from "../../commands/handlers/strike-appeal-handler";
 import type { SubmitApprovalHandler } from "../../commands/handlers/submit-approval-handler";
 import type { SlashCommand } from "../../commands/contracts/slash-command";
 import type { CommandRegistry } from "../../commands/registry/command-registry";
@@ -10,10 +11,12 @@ import type { AppConfig } from "../../config/env";
 import type { CommandDeployer } from "../../discord/command-deployer";
 import type { AssignmentRepository } from "../../repositories/interfaces/assignment-repository";
 import type { GuildConfigRepository } from "../../repositories/interfaces/guild-config-repository";
+import type { StrikeRepository } from "../../repositories/interfaces/strike-repository";
 import type { TaskReminderRepository } from "../../repositories/interfaces/task-reminder-repository";
 import type { UserRepository } from "../../repositories/interfaces/user-repository";
 import type { AssignmentService } from "../../services/assignment-service";
 import type { ConfigCacheService } from "../../services/config-cache-service";
+import type { StrikeService } from "../../services/strike-service";
 import type { TaskReminderBootstrapService } from "../../services/task-reminder-bootstrap-service";
 import type { TaskReminderDispatcherService } from "../../services/task-reminder-dispatcher-service";
 import type { TaskReminderScheduleService } from "../../services/task-reminder-schedule-service";
@@ -45,6 +48,9 @@ export const TOKENS = {
   commandDeployer: createToken<CommandDeployer>("commandDeployer"),
   interactionCreateHandler: createToken<InteractionCreateHandler>("interactionCreateHandler"),
   submitApprovalHandler: createToken<SubmitApprovalHandler>("submitApprovalHandler"),
+  strikeRepository: createToken<StrikeRepository>("strikeRepository"),
+  strikeService: createToken<StrikeService>("strikeService"),
+  strikeAppealHandler: createToken<StrikeAppealHandler>("strikeAppealHandler"),
   bot: createToken<FlowerSekaiBot>("bot"),
 } as const;
 
