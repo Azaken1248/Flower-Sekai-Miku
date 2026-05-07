@@ -171,4 +171,45 @@ describe("utility commands", () => {
       f.name === "◈ Hiatus Reason" && f.value.includes("Taking exams")
     )).toBe(true);
   });
+
+  it("ProfileCommand shows max-strike warning when user has 3 strikes", async () => {
+    const command = new ProfileCommand();
+    const interaction = createMockInteraction({
+      user: { id: "user-1" },
+      inGuild: true,
+    });
+
+    const context = createMockCommandContext();
+    (context.userService.getProfile as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      user: {
+        joinedAt: new Date("2026-01-01T00:00:00.000Z"),
+        deboardedAt: null,
+        deboardedMessage: "",
+        isDeboarded: false,
+        isOnHiatus: false,
+        strikes: 3,
+      },
+      assignmentStats: {
+        total: 5,
+        pending: 2,
+        completed: 3,
+        late: 0,
+        excused: 0,
+      },
+    });
+
+    await command.execute(interaction as never, context);
+
+    const embed = interaction.reply.mock.calls[0][0].embeds[0].toJSON();
+
+    // Warning field present
+    expect(embed.fields?.some((f: { name: string }) =>
+      f.name.includes("Maximum Strikes")
+    )).toBe(true);
+
+    // Strike text has warning emoji
+    expect(embed.fields?.some((f: { name: string; value: string }) =>
+      f.name.includes("Roster Status") && f.value.includes("⚠️")
+    )).toBe(true);
+  });
 });

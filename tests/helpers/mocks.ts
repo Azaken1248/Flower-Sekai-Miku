@@ -198,6 +198,13 @@ export const createMockCommandContext = (
       }),
       refreshConfig: vi.fn(),
     } as unknown as CommandExecutionContext["configCacheService"],
+    strikeService: {
+      addStrike: vi.fn(),
+      removeStrike: vi.fn(),
+      fileAppeal: vi.fn(),
+      resolveAppeal: vi.fn(),
+      getStrikesForUser: vi.fn(),
+    } as unknown as CommandExecutionContext["strikeService"],
     ...overrides,
   };
 };
