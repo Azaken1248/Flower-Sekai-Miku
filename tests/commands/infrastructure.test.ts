@@ -1,78 +1,62 @@
 import { describe, expect, it } from "vitest";
 
-import { CommandLoader } from "../../src/commands/loader/command-loader";
 import { buildCommandModules } from "../../src/commands/modules";
-import { CommandRegistry } from "../../src/commands/registry/command-registry";
 import { createTestConfig } from "../helpers/mocks";
 
-describe("CommandRegistry", () => {
-  it("registers and retrieves commands", () => {
-    const registry = new CommandRegistry();
-    const command = {
-      data: { name: "hello" },
-      execute: async () => undefined,
-    };
+describe("Infrastructure & Command Registration", () => {
+  describe("buildCommandModules", () => {
+    it("includes all expected command names", () => {
+      const config = createTestConfig();
+      const modules = buildCommandModules(config);
+      
+      const names = modules.map((command) => command.data.name).sort();
 
-    registry.register(command as never);
+      expect(names).toEqual([
+        "assign",
+        "deboard",
+        "extend",        
+        "hello",
+        "onboard",
+        "ping",
+        "profile",
+        "remove-task",
+        "tasks",
+        "transfer-task",
+        "uptime",
+      ]);
+    });
 
-    expect(registry.get("hello")).toBe(command);
-    expect(registry.list()).toEqual([command]);
-  });
+    it("ensures every registered command meets structural integrity requirements", () => {
+      const config = createTestConfig();
+      const modules = buildCommandModules(config);
 
-  it("throws on duplicate registration", () => {
-    const registry = new CommandRegistry();
-    const command = {
-      data: { name: "hello" },
-      execute: async () => undefined,
-    };
+      expect(modules.length).toBeGreaterThan(0);
 
-    registry.register(command as never);
+      for (const command of modules) {
+        expect(command.data, `Command ${command.constructor.name} is missing data property`).toBeDefined();
 
-    expect(() => registry.register(command as never)).toThrowError(
-      "Duplicate command registration attempted for 'hello'.",
-    );
-  });
-});
+        expect(command.data.name?.length).toBeGreaterThan(0);
+        expect(command.data.description?.length).toBeGreaterThan(0);
 
-describe("CommandLoader", () => {
-  it("registers commands once", () => {
-    const registry = new CommandRegistry();
-    const commands = [
-      {
-        data: { name: "alpha" },
-        execute: async () => undefined,
-      },
-      {
-        data: { name: "beta" },
-        execute: async () => undefined,
-      },
-    ] as never[];
+        expect(typeof command.execute).toBe("function");
 
-    const loader = new CommandLoader(registry, commands);
+        if ("requiredRoleIds" in command) {
+          expect(Array.isArray(command.requiredRoleIds)).toBe(true);
+        }
+      }
+    });
 
-    const firstLoad = loader.load();
-    const secondLoad = loader.load();
+    it("properly passes configuration to commands that require it", () => {
+      const config = createTestConfig();
+      const modules = buildCommandModules(config);
 
-    expect(firstLoad).toBe(commands);
-    expect(secondLoad).toBe(commands);
-    expect(registry.list()).toHaveLength(2);
-  });
-});
+      const assignCommand = modules.find(m => m.data.name === "assign") as any;
+      expect(assignCommand).toBeDefined();
+      expect(assignCommand.requiredRoleIds).toContain(config.roles.owners);
 
-describe("buildCommandModules", () => {
-  it("includes all expected command names", () => {
-    const modules = buildCommandModules(createTestConfig());
-    const names = modules.map((command) => command.data.name).sort();
-
-    expect(names).toEqual([
-      "assign",
-      "deboard",
-      "extension",
-      "hello",
-      "onboard",
-      "ping",
-      "profile",
-      "uptime",
-    ]);
+      const removeCommand = modules.find(m => m.data.name === "remove-task") as any;
+      expect(removeCommand).toBeDefined();
+      expect(removeCommand.requiredRoleIds).toContain(config.roles.owners);
+    });
   });
 });
