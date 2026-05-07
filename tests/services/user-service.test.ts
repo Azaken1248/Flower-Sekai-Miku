@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { UserService } from "../../src/services/user-service";
 import { createMockLogger } from "../helpers/mocks";
 
+const createMockReminderService = () => ({
+  scheduleForAssignment: vi.fn(),
+  rescheduleForAssignment: vi.fn(),
+  cancelRemindersForAssignment: vi.fn(),
+  scheduleForAssignments: vi.fn(),
+});
+
 describe("UserService", () => {
   it("creates a new user during onboarding when none exists", async () => {
     const createdUser = {
@@ -29,6 +36,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -68,6 +76,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -102,6 +111,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -128,6 +138,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -160,6 +171,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -197,6 +209,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -223,6 +236,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -271,6 +285,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -316,6 +331,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -355,6 +371,7 @@ describe("UserService", () => {
     const service = new UserService(
       userRepository as never,
       assignmentRepository as never,
+      createMockReminderService() as never,
       createMockLogger(),
     );
 
@@ -363,5 +380,262 @@ describe("UserService", () => {
     expect(result.active.length).toBe(1);
     expect(result.active[0]!.discordId).toBe("user-2");
     expect(result.hiatus.length).toBe(0);
+  });
+
+  it("startHiatus returns notFound for unknown user", async () => {
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue(null),
+      setHiatus: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.startHiatus("missing");
+
+    expect(result.status).toBe("notFound");
+    expect(userRepository.setHiatus).not.toHaveBeenCalled();
+  });
+
+  it("startHiatus returns deboarded for deboarded user", async () => {
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({ discordId: "123", isDeboarded: true, isOnHiatus: false }),
+      setHiatus: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.startHiatus("123");
+
+    expect(result.status).toBe("deboarded");
+    expect(userRepository.setHiatus).not.toHaveBeenCalled();
+  });
+
+  it("startHiatus returns alreadyOnHiatus when user is already on hiatus", async () => {
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({ discordId: "123", isDeboarded: false, isOnHiatus: true }),
+      setHiatus: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.startHiatus("123");
+
+    expect(result.status).toBe("alreadyOnHiatus");
+    expect(userRepository.setHiatus).not.toHaveBeenCalled();
+  });
+
+  it("startHiatus sets hiatus with timestamp and cancels reminders", async () => {
+    const updatedUser = { discordId: "123", isDeboarded: false, isOnHiatus: true };
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({ discordId: "123", isDeboarded: false, isOnHiatus: false }),
+      setHiatus: vi.fn().mockResolvedValue(updatedUser),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+      findPendingByDiscordUserId: vi.fn().mockResolvedValue([
+        { id: "a1" },
+        { id: "a2" },
+      ]),
+    };
+
+    const mockReminderService = createMockReminderService();
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      mockReminderService as never,
+      createMockLogger(),
+    );
+
+    const result = await service.startHiatus("123");
+
+    expect(result.status).toBe("started");
+    expect(result.user).toBe(updatedUser);
+    expect(userRepository.setHiatus).toHaveBeenCalledWith("123", true, expect.any(Date), null);
+    expect(assignmentRepository.findPendingByDiscordUserId).toHaveBeenCalledWith("123");
+    expect(mockReminderService.cancelRemindersForAssignment).toHaveBeenCalledTimes(2);
+    expect(mockReminderService.cancelRemindersForAssignment).toHaveBeenCalledWith("a1");
+    expect(mockReminderService.cancelRemindersForAssignment).toHaveBeenCalledWith("a2");
+  });
+
+  it("startHiatus passes reason to repository", async () => {
+    const updatedUser = { discordId: "123", isDeboarded: false, isOnHiatus: true };
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({ discordId: "123", isDeboarded: false, isOnHiatus: false }),
+      setHiatus: vi.fn().mockResolvedValue(updatedUser),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+      findPendingByDiscordUserId: vi.fn().mockResolvedValue([]),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.startHiatus("123", "Taking a vacation");
+
+    expect(result.status).toBe("started");
+    expect(userRepository.setHiatus).toHaveBeenCalledWith("123", true, expect.any(Date), "Taking a vacation");
+  });
+
+  it("endHiatus returns notFound for unknown user", async () => {
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue(null),
+      setHiatus: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+      findPendingByDiscordUserId: vi.fn().mockResolvedValue([]),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.endHiatus("missing");
+
+    expect(result.status).toBe("notFound");
+  });
+
+  it("endHiatus returns notOnHiatus when user is not on hiatus", async () => {
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({ discordId: "123", isOnHiatus: false }),
+      setHiatus: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+      findPendingByDiscordUserId: vi.fn().mockResolvedValue([]),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.endHiatus("123");
+
+    expect(result.status).toBe("notOnHiatus");
+    expect(userRepository.setHiatus).not.toHaveBeenCalled();
+  });
+
+  it("endHiatus pushes deadlines and reschedules reminders", async () => {
+    const hiatusStart = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // 3 days ago
+    const updatedUser = { discordId: "123", isOnHiatus: false };
+
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({
+        discordId: "123",
+        isOnHiatus: true,
+        hiatusStartedAt: hiatusStart,
+      }),
+      setHiatus: vi.fn().mockResolvedValue(updatedUser),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn().mockResolvedValue(2),
+      findPendingByDiscordUserId: vi.fn().mockResolvedValue([
+        { id: "a1" },
+        { id: "a2" },
+      ]),
+    };
+
+    const mockReminderService = createMockReminderService();
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      mockReminderService as never,
+      createMockLogger(),
+    );
+
+    const result = await service.endHiatus("123");
+
+    expect(result.status).toBe("ended");
+    expect(result.deadlinesAffected).toBe(2);
+    expect(userRepository.setHiatus).toHaveBeenCalledWith("123", false, null, null);
+    expect(assignmentRepository.pushDeadlinesByDiscordUserId).toHaveBeenCalledWith(
+      "123",
+      expect.any(Number),
+    );
+
+    // Verify the offset is roughly 3 days (within 5 seconds tolerance)
+    const actualOffset = assignmentRepository.pushDeadlinesByDiscordUserId.mock.calls[0][1];
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+    expect(actualOffset).toBeGreaterThan(threeDaysMs - 5000);
+    expect(actualOffset).toBeLessThan(threeDaysMs + 5000);
+
+    // Verify reminders rescheduled
+    expect(mockReminderService.rescheduleForAssignment).toHaveBeenCalledTimes(2);
+  });
+
+  it("endHiatus handles missing hiatusStartedAt gracefully", async () => {
+    const updatedUser = { discordId: "123", isOnHiatus: false };
+
+    const userRepository = {
+      findByDiscordId: vi.fn().mockResolvedValue({
+        discordId: "123",
+        isOnHiatus: true,
+        hiatusStartedAt: null,
+      }),
+      setHiatus: vi.fn().mockResolvedValue(updatedUser),
+    };
+
+    const assignmentRepository = {
+      pushDeadlinesByDiscordUserId: vi.fn(),
+      findPendingByDiscordUserId: vi.fn().mockResolvedValue([]),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockReminderService() as never,
+      createMockLogger(),
+    );
+
+    const result = await service.endHiatus("123");
+
+    expect(result.status).toBe("ended");
+    expect(result.deadlinesAffected).toBe(0);
+    expect(assignmentRepository.pushDeadlinesByDiscordUserId).not.toHaveBeenCalled();
   });
 });

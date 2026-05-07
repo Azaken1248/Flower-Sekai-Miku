@@ -240,4 +240,66 @@ describe("AssignmentService", () => {
       expect(result).toBeNull();
     });
   });
-});
+
+  describe("hiatus edge cases", () => {
+    it("assignTask throws when target user is on hiatus", async () => {
+      (mockUserRepo as any).findByDiscordId.mockResolvedValue({ id: "mongo-id", isDeboarded: false, isOnHiatus: true });
+
+      await expect(
+        service.assignTask({
+          discordUserId: "user-1",
+          roleId: "role-1",
+          taskName: "Task",
+          description: "Desc",
+          deadline: new Date(),
+          isTimeLimited: false,
+        }),
+      ).rejects.toThrow("hiatus");
+    });
+
+    it("transferTask fails when target user is on hiatus", async () => {
+      (mockAssignmentRepo as any).findById.mockResolvedValue({ discordUserId: "user-1" });
+      (mockUserRepo as any).findByDiscordId.mockResolvedValue({ id: "new-id", isDeboarded: false, isOnHiatus: true });
+
+      const result = await service.transferTask("assignment-1", "new-user");
+      expect(result.success).toBe(false);
+      expect(result.reason).toContain("hiatus");
+    });
+
+    it("submitTask returns onHiatus when user is on hiatus", async () => {
+      (mockAssignmentRepo as any).findById.mockResolvedValue({
+        id: "assignment-1",
+        discordUserId: "user-1",
+        status: "PENDING",
+      });
+      (mockUserRepo as any).findByDiscordId.mockResolvedValue({ discordId: "user-1", isOnHiatus: true });
+
+      const result = await service.submitTask({
+        assignmentId: "assignment-1",
+        discordUserId: "user-1",
+      });
+
+      expect(result.status).toBe("onHiatus");
+      expect(result.reason).toContain("hiatus");
+    });
+
+    it("requestExtension denies when user is on hiatus", async () => {
+      (mockAssignmentRepo as any).findById.mockResolvedValue({
+        id: "assignment-1",
+        discordUserId: "user-1",
+        isTimeLimited: false,
+        deadline: new Date("2026-01-01"),
+      });
+      (mockUserRepo as any).findByDiscordId.mockResolvedValue({ discordId: "user-1", isOnHiatus: true });
+
+      const result = await service.requestExtension({
+        assignmentId: "assignment-1",
+        discordUserId: "user-1",
+        newDeadline: new Date("2026-02-01"),
+      });
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain("hiatus");
+    });
+  });
+});
