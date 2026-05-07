@@ -12,4 +12,5 @@ export interface UserRepository {
   markDeboarded(discordId: string, message?: string): Promise<IUser | null>;
   setHiatus(discordId: string, isOnHiatus: boolean): Promise<IUser | null>;
   appendAssignment(discordId: string, assignmentId: string): Promise<void>;
+  removeAssignment(discordId: string, assignmentId: string): Promise<void>;
 }
