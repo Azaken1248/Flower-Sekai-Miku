@@ -6,23 +6,24 @@ import {
 } from "discord.js";
 
 import { createMikuEmbed } from "../../../presentation/miku-embed";
+import { parseNaturalDate } from "../../../utils/date-parser";
 import type { CommandExecutionContext } from "../../contracts/command-execution-context";
 import type { SlashCommand } from "../../contracts/slash-command";
 
 export class ExtensionCommand implements SlashCommand {
   readonly data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder = new SlashCommandBuilder()
-    .setName("extension")
-    .setDescription("Request a deadline extension for one of your assignments.")
+    .setName("extend")
+    .setDescription("Request a deadline extension for one of your pending tasks.")
     .addStringOption((option) =>
       option
         .setName("assignment_id")
-        .setDescription("Assignment Mongo id")
+        .setDescription("The ID of the assignment to extend")
         .setRequired(true),
     )
     .addStringOption((option) =>
       option
         .setName("new_deadline")
-        .setDescription("New deadline in ISO format, e.g. 2026-06-01T12:00:00Z")
+        .setDescription('e.g., "tomorrow", "in 3 days", "Oct 24", "next friday"')
         .setRequired(true),
     );
 
@@ -31,15 +32,16 @@ export class ExtensionCommand implements SlashCommand {
     context: CommandExecutionContext,
   ): Promise<void> {
     const assignmentId = interaction.options.getString("assignment_id", true);
-    const newDeadlineRaw = interaction.options.getString("new_deadline", true);
-    const newDeadline = new Date(newDeadlineRaw);
+    const deadlineInput = interaction.options.getString("new_deadline", true);
 
-    if (Number.isNaN(newDeadline.getTime())) {
+    const newDeadline = parseNaturalDate(deadlineInput);
+
+    if (!newDeadline || newDeadline.getTime() <= Date.now()) {
       await interaction.reply({
         embeds: [
           createMikuEmbed({
-            title: "Miku Extension Desk",
-            description: "Invalid date format. Use an ISO date like 2026-06-01T12:00:00Z.",
+            title: "Miku Extension Board",
+            description: `> I couldn't understand the date \`${deadlineInput}\`, or it's in the past. Try something like \`"in 3 days"\`!`,
             tone: "wave",
           }),
         ],
@@ -58,9 +60,9 @@ export class ExtensionCommand implements SlashCommand {
       await interaction.reply({
         embeds: [
           createMikuEmbed({
-            title: "Miku Extension Desk",
-            description: result.reason ?? "Extension request denied.",
-            tone: "mist",
+            title: "Miku Extension Board",
+            description: `> **Extension Denied:** ${result.reason ?? "Unknown reason."}`,
+            tone: "wave",
           }),
         ],
         flags: MessageFlags.Ephemeral,
@@ -68,14 +70,26 @@ export class ExtensionCommand implements SlashCommand {
       return;
     }
 
-    const deadlineUnix = Math.floor(result.assignment.deadline.getTime() / 1000);
+    const unixDeadline = Math.floor(result.assignment.deadline.getTime() / 1000);
 
     await interaction.reply({
       embeds: [
         createMikuEmbed({
-          title: "Miku Extension Desk",
-          description: `Miku approved the extension. New deadline: <t:${deadlineUnix}:f>.`,
-          tone: "sky",
+          title: "Miku Extension Board",
+          description: `> Miku approved the extension! Keep your momentum going! 🌟`,
+          tone: "bloom",
+          fields: [
+            {
+              name: "◈ New Deadline",
+              value: `> <t:${unixDeadline}:F>\n> (<t:${unixDeadline}:R>)`,
+              inline: true,
+            },
+            {
+              name: "◈ Extensions Used",
+              value: `> \` ${result.assignment.extensionsGranted} \``,
+              inline: true,
+            },
+          ],
         }),
       ],
       flags: MessageFlags.Ephemeral,
