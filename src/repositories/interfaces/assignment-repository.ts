@@ -18,4 +18,6 @@ export interface AssignmentRepository {
   findPendingByDiscordUserId(discordUserId: string): Promise<IAssignment[]>;
   findAllPending(): Promise<IAssignment[]>;
   countByDiscordUserId(discordUserId: string, status?: AssignmentStatus): Promise<number>;
+  deleteById(id: string): Promise<boolean>;
+  transfer(id: string, newUserId: string, newDiscordUserId: string): Promise<IAssignment | null>;
 }
