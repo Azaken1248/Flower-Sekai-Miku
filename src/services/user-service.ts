@@ -134,4 +134,30 @@ export class UserService {
       },
     };
   }
+
+  async getAvailableMembers(): Promise<{ active: IUser[]; hiatus: IUser[] }> {
+    const allActive = await this.userRepository.findAllActive();
+
+    const pendingCounts = await Promise.all(
+      allActive.map(async (user) => ({
+        user,
+        pending: await this.assignmentRepository.countByDiscordUserId(user.discordId, "PENDING"),
+      })),
+    );
+
+    const free = pendingCounts.filter((entry) => entry.pending === 0);
+
+    const active: IUser[] = [];
+    const hiatus: IUser[] = [];
+
+    for (const entry of free) {
+      if (entry.user.isOnHiatus) {
+        hiatus.push(entry.user);
+      } else {
+        active.push(entry.user);
+      }
+    }
+
+    return { active, hiatus };
+  }
 }
