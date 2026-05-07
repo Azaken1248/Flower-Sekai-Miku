@@ -8,6 +8,7 @@ import {
 import type {
   AssignmentRepository,
   CreateAssignmentInput,
+  HistoryFilter,
 } from "../interfaces/assignment-repository";
 
 export class MongooseAssignmentRepository implements AssignmentRepository {
@@ -69,6 +70,27 @@ export class MongooseAssignmentRepository implements AssignmentRepository {
     return AssignmentModel.find({
       status: "PENDING",
     }).exec();
+  }
+
+  async findByDiscordUserId(discordUserId: string, filter?: HistoryFilter): Promise<IAssignment[]> {
+    const query: Record<string, unknown> = { discordUserId };
+
+    if (filter?.status) {
+      query.status = filter.status;
+    }
+
+    if (filter?.roleId) {
+      query.roleId = filter.roleId;
+    }
+
+    if (filter?.taskName) {
+      query.taskName = { $regex: filter.taskName, $options: "i" };
+    }
+
+    return AssignmentModel.find(query)
+      .sort({ deadline: -1 })
+      .limit(25)
+      .exec();
   }
 
   async countByDiscordUserId(discordUserId: string, status?: AssignmentStatus): Promise<number> {
