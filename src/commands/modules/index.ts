@@ -1,5 +1,7 @@
 import type { AppConfig } from "../../config/env";
 import { DeboardCommand } from "./crew/deboard.command";
+import { EndHiatusCommand } from "./crew/endhiatus.command";
+import { HiatusCommand } from "./crew/hiatus.command";
 import type { SlashCommand } from "../contracts/slash-command";
 import { OnboardCommand } from "./crew/onboard.command";
 import { AssignCommand } from "./tasks/assign.command";
@@ -21,6 +23,8 @@ export const buildCommandModules = (config: AppConfig): SlashCommand[] => {
   return [
     new OnboardCommand(),
     new DeboardCommand(),
+    new HiatusCommand(),
+    new EndHiatusCommand(),
     new AssignCommand(adminRoleIds, config.roles.specialized),
     new ExtensionCommand(),
     new SubmitCommand(),
