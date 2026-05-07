@@ -1,4 +1,5 @@
 import {
+  type ButtonInteraction,
   type ChatInputCommandInteraction,
   Client,
   Events,
@@ -11,11 +12,13 @@ import { createMikuEmbed } from "../../presentation/miku-embed";
 import { hasPermissionBypass } from "../../security/permission-bypass";
 import type { CommandExecutionContext } from "../contracts/command-execution-context";
 import { CommandRegistry } from "../registry/command-registry";
+import type { SubmitApprovalHandler } from "./submit-approval-handler";
 
 export class InteractionCreateHandler {
   constructor(
     private readonly commandRegistry: CommandRegistry,
     private readonly commandContext: CommandExecutionContext,
+    private readonly submitApprovalHandler: SubmitApprovalHandler,
     private readonly logger: Logger,
   ) {}
 
@@ -26,6 +29,11 @@ export class InteractionCreateHandler {
   }
 
   private async handleInteraction(interaction: Interaction): Promise<void> {
+    if (interaction.isButton()) {
+      await this.handleButtonInteraction(interaction);
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) {
       return;
     }
@@ -97,6 +105,35 @@ export class InteractionCreateHandler {
         ],
         flags: MessageFlags.Ephemeral,
       });
+    }
+  }
+
+  private async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+    if (this.submitApprovalHandler.canHandle(interaction.customId)) {
+      try {
+        await this.submitApprovalHandler.handle(interaction);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unexpected button handler failure.";
+        this.logger.error("Submit approval button handler failed.", {
+          customId: interaction.customId,
+          userId: interaction.user.id,
+          message,
+        });
+
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            embeds: [
+              createMikuEmbed({
+                title: "Miku Error Report",
+                description: `Button action failed: ${message}`,
+                tone: "wave",
+              }),
+            ],
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+      }
+      return;
     }
   }
 
