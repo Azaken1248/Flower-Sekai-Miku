@@ -26,6 +26,19 @@ export interface ExtensionRequestResult {
   assignment?: IAssignment;
 }
 
+export interface RemoveTaskResult {
+  success: boolean;
+  reason?: string;
+  assignment?: IAssignment;
+}
+
+export interface TransferTaskResult {
+  success: boolean;
+  reason?: string;
+  assignment?: IAssignment;
+  oldDiscordUserId?: string;
+}
+
 export class AssignmentService {
   constructor(
     private readonly assignmentRepository: AssignmentRepository,
@@ -74,32 +87,19 @@ export class AssignmentService {
   async requestExtension(input: ExtensionRequestInput): Promise<ExtensionRequestResult> {
     const assignment = await this.assignmentRepository.findById(input.assignmentId);
     if (!assignment) {
-      return {
-        allowed: false,
-        reason: "Assignment not found.",
-      };
+      return { allowed: false, reason: "Assignment not found." };
     }
 
     if (!input.bypassUserCheck && assignment.discordUserId !== input.discordUserId) {
-      return {
-        allowed: false,
-        reason: "You can only request extensions for your own assignments.",
-      };
+      return { allowed: false, reason: "You can only request extensions for your own assignments." };
     }
 
     if (assignment.isTimeLimited) {
-      return {
-        allowed: false,
-        reason:
-          "This assignment is marked as time-limited and cannot be auto-extended. Ask an owner for manual override.",
-      };
+      return { allowed: false, reason: "This assignment is marked as time-limited and cannot be auto-extended. Ask an owner for manual override." };
     }
 
     if (input.newDeadline <= assignment.deadline) {
-      return {
-        allowed: false,
-        reason: "The new deadline must be later than the current deadline.",
-      };
+      return { allowed: false, reason: "The new deadline must be later than the current deadline." };
     }
 
     const updatedAssignment = await this.assignmentRepository.extendDeadline(
@@ -108,10 +108,7 @@ export class AssignmentService {
     );
 
     if (!updatedAssignment) {
-      return {
-        allowed: false,
-        reason: "Unable to apply extension right now.",
-      };
+      return { allowed: false, reason: "Unable to apply extension right now." };
     }
 
     try {
@@ -130,9 +127,79 @@ export class AssignmentService {
       extensionsGranted: updatedAssignment.extensionsGranted,
     });
 
-    return {
-      allowed: true,
-      assignment: updatedAssignment,
-    };
+    return { allowed: true, assignment: updatedAssignment };
+  }
+
+  async removeTask(assignmentId: string): Promise<RemoveTaskResult> {
+    const assignment = await this.assignmentRepository.findById(assignmentId);
+    if (!assignment) {
+      return { success: false, reason: "Assignment not found." };
+    }
+
+    await this.userRepository.removeAssignment(assignment.discordUserId, assignment.id);
+    await this.assignmentRepository.deleteById(assignment.id);
+
+    try {
+      await this.taskReminderScheduleService.cancelRemindersForAssignment(assignment.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown reminder cancellation error.";
+      this.logger.warn("Assignment removed but reminder cancellation failed.", {
+        assignmentId: assignment.id,
+        message,
+      });
+    }
+
+    this.logger.info("Assignment removed.", {
+      assignmentId: assignment.id,
+      discordUserId: assignment.discordUserId,
+    });
+
+    return { success: true, assignment };
+  }
+
+  async transferTask(assignmentId: string, newDiscordUserId: string): Promise<TransferTaskResult> {
+    const assignment = await this.assignmentRepository.findById(assignmentId);
+    if (!assignment) {
+      return { success: false, reason: "Assignment not found." };
+    }
+
+    if (assignment.discordUserId === newDiscordUserId) {
+      return { success: false, reason: "Task is already assigned to this member." };
+    }
+
+    const newUser = await this.userRepository.findByDiscordId(newDiscordUserId);
+    if (!newUser || newUser.isDeboarded) {
+      return { success: false, reason: "Target member is not active or onboarded." };
+    }
+
+    await this.userRepository.removeAssignment(assignment.discordUserId, assignment.id);
+    await this.userRepository.appendAssignment(newDiscordUserId, assignment.id);
+
+    const updatedAssignment = await this.assignmentRepository.transfer(assignment.id, newUser.id, newDiscordUserId);
+    if (!updatedAssignment) {
+      return { success: false, reason: "Failed to transfer assignment." };
+    }
+
+    try {
+      await this.taskReminderScheduleService.rescheduleForAssignment(updatedAssignment);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown reminder rescheduling error.";
+      this.logger.warn("Assignment transferred but reminder rescheduling failed.", {
+        assignmentId: updatedAssignment.id,
+        message,
+      });
+    }
+
+    this.logger.info("Assignment transferred.", {
+      assignmentId: updatedAssignment.id,
+      oldUserId: assignment.discordUserId,
+      newUserId: newDiscordUserId,
+    });
+
+    return { success: true, assignment: updatedAssignment, oldDiscordUserId: assignment.discordUserId };
+  }
+
+  async getPendingTasks(discordUserId: string): Promise<IAssignment[]> {
+    return this.assignmentRepository.findPendingByDiscordUserId(discordUserId);
   }
 }
