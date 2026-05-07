@@ -5,6 +5,8 @@ export interface IUser extends Document {
   username: string;
   strikes: number;
   isOnHiatus: boolean;
+  hiatusStartedAt: Date | null;
+  hiatusReason: string | null;
   isDeboarded: boolean;
   deboardedAt: Date | null;
   deboardedMessage: string;
@@ -17,6 +19,8 @@ const UserSchema = new Schema<IUser>({
   username: { type: String, required: true },
   strikes: { type: Number, default: 0, min: 0, max: 3 },
   isOnHiatus: { type: Boolean, default: false },
+  hiatusStartedAt: { type: Date, default: null },
+  hiatusReason: { type: String, default: null },
   isDeboarded: { type: Boolean, default: false },
   deboardedAt: { type: Date, default: null },
   deboardedMessage: { type: String, default: "Moved to a different team" },
