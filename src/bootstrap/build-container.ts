@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits } from "discord.js";
 
 import { FlowerSekaiBot } from "../app/bot";
 import { InteractionCreateHandler } from "../commands/handlers/interaction-create-handler";
+import { StrikeAppealHandler } from "../commands/handlers/strike-appeal-handler";
 import { SubmitApprovalHandler } from "../commands/handlers/submit-approval-handler";
 import { CommandLoader } from "../commands/loader/command-loader";
 import { buildCommandModules } from "../commands/modules";
@@ -13,10 +14,12 @@ import { createLogger } from "../core/logger/logger";
 import { CommandDeployer } from "../discord/command-deployer";
 import { MongooseAssignmentRepository } from "../repositories/mongoose/mongoose-assignment-repository";
 import { MongooseGuildConfigRepository } from "../repositories/mongoose/mongoose-guild-config-repository";
+import { MongooseStrikeRepository } from "../repositories/mongoose/mongoose-strike-repository";
 import { MongooseTaskReminderRepository } from "../repositories/mongoose/mongoose-task-reminder-repository";
 import { MongooseUserRepository } from "../repositories/mongoose/mongoose-user-repository";
 import { AssignmentService } from "../services/assignment-service";
 import { ConfigCacheService } from "../services/config-cache-service";
+import { StrikeService } from "../services/strike-service";
 import { TaskReminderBootstrapService } from "../services/task-reminder-bootstrap-service";
 import { TaskReminderDispatcherService } from "../services/task-reminder-dispatcher-service";
 import { TaskReminderScheduleService } from "../services/task-reminder-schedule-service";
@@ -48,6 +51,10 @@ export const buildContainer = (): ServiceContainer => {
   container.registerSingleton(
     TOKENS.taskReminderRepository,
     () => new MongooseTaskReminderRepository(),
+  );
+  container.registerSingleton(
+    TOKENS.strikeRepository,
+    () => new MongooseStrikeRepository(),
   );
 
   container.registerSingleton(
@@ -114,6 +121,16 @@ export const buildContainer = (): ServiceContainer => {
       ),
   );
 
+  container.registerSingleton(
+    TOKENS.strikeService,
+    (resolver) =>
+      new StrikeService(
+        resolver.resolve(TOKENS.strikeRepository),
+        resolver.resolve(TOKENS.userRepository),
+        resolver.resolve(TOKENS.logger),
+      ),
+  );
+
   container.registerSingleton(TOKENS.commands, (resolver) => {
     return buildCommandModules(resolver.resolve(TOKENS.config));
   });
@@ -146,6 +163,16 @@ export const buildContainer = (): ServiceContainer => {
   );
 
   container.registerSingleton(
+    TOKENS.strikeAppealHandler,
+    (resolver) =>
+      new StrikeAppealHandler(
+        resolver.resolve(TOKENS.strikeService),
+        resolver.resolve(TOKENS.config),
+        resolver.resolve(TOKENS.logger),
+      ),
+  );
+
+  container.registerSingleton(
     TOKENS.interactionCreateHandler,
     (resolver) =>
       new InteractionCreateHandler(
@@ -155,9 +182,12 @@ export const buildContainer = (): ServiceContainer => {
           logger: resolver.resolve(TOKENS.logger),
           userService: resolver.resolve(TOKENS.userService),
           assignmentService: resolver.resolve(TOKENS.assignmentService),
+          strikeService: resolver.resolve(TOKENS.strikeService),
           configCacheService: resolver.resolve(TOKENS.configCacheService),
         },
         resolver.resolve(TOKENS.submitApprovalHandler),
+        resolver.resolve(TOKENS.strikeAppealHandler),
+        resolver.resolve(TOKENS.userRepository),
         resolver.resolve(TOKENS.logger),
       ),
   );
