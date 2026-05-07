@@ -39,6 +39,20 @@ export interface TransferTaskResult {
   oldDiscordUserId?: string;
 }
 
+export interface SubmitTaskInput {
+  assignmentId: string;
+  discordUserId: string;
+  bypassUserCheck?: boolean;
+}
+
+export type SubmitTaskStatus = "submitted" | "notFound" | "notOwner" | "notPending";
+
+export interface SubmitTaskResult {
+  status: SubmitTaskStatus;
+  reason?: string;
+  assignment?: IAssignment;
+}
+
 export class AssignmentService {
   constructor(
     private readonly assignmentRepository: AssignmentRepository,
@@ -201,5 +215,49 @@ export class AssignmentService {
 
   async getPendingTasks(discordUserId: string): Promise<IAssignment[]> {
     return this.assignmentRepository.findPendingByDiscordUserId(discordUserId);
+  }
+
+  async submitTask(input: SubmitTaskInput): Promise<SubmitTaskResult> {
+    const assignment = await this.assignmentRepository.findById(input.assignmentId);
+    if (!assignment) {
+      return { status: "notFound", reason: "Assignment not found." };
+    }
+
+    if (!input.bypassUserCheck && assignment.discordUserId !== input.discordUserId) {
+      return { status: "notOwner", reason: "You can only submit your own assignments." };
+    }
+
+    if (assignment.status !== "PENDING") {
+      return {
+        status: "notPending",
+        reason: `This assignment is currently marked as \`${assignment.status}\` and cannot be submitted for review.`,
+      };
+    }
+
+    this.logger.info("Task submitted for review.", {
+      assignmentId: assignment.id,
+      discordUserId: assignment.discordUserId,
+    });
+
+    return { status: "submitted", assignment };
+  }
+
+  async approveTask(assignmentId: string): Promise<IAssignment | null> {
+    const updated = await this.assignmentRepository.updateStatus(assignmentId, "COMPLETED");
+    if (updated) {
+      this.logger.info("Task submission approved.", { assignmentId });
+
+      try {
+        await this.taskReminderScheduleService.cancelRemindersForAssignment(assignmentId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown reminder cancellation error.";
+        this.logger.warn("Task approved but reminder cancellation failed.", {
+          assignmentId,
+          message,
+        });
+      }
+    }
+
+    return updated;
   }
 }
