@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits } from "discord.js";
 
 import { FlowerSekaiBot } from "../app/bot";
 import { InteractionCreateHandler } from "../commands/handlers/interaction-create-handler";
+import { SubmitApprovalHandler } from "../commands/handlers/submit-approval-handler";
 import { CommandLoader } from "../commands/loader/command-loader";
 import { buildCommandModules } from "../commands/modules";
 import { CommandRegistry } from "../commands/registry/command-registry";
@@ -133,6 +134,16 @@ export const buildContainer = (): ServiceContainer => {
   );
 
   container.registerSingleton(
+    TOKENS.submitApprovalHandler,
+    (resolver) =>
+      new SubmitApprovalHandler(
+        resolver.resolve(TOKENS.assignmentService),
+        resolver.resolve(TOKENS.config),
+        resolver.resolve(TOKENS.logger),
+      ),
+  );
+
+  container.registerSingleton(
     TOKENS.interactionCreateHandler,
     (resolver) =>
       new InteractionCreateHandler(
@@ -144,6 +155,7 @@ export const buildContainer = (): ServiceContainer => {
           assignmentService: resolver.resolve(TOKENS.assignmentService),
           configCacheService: resolver.resolve(TOKENS.configCacheService),
         },
+        resolver.resolve(TOKENS.submitApprovalHandler),
         resolver.resolve(TOKENS.logger),
       ),
   );
