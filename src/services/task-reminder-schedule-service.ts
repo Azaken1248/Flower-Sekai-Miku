@@ -33,6 +33,11 @@ export class TaskReminderScheduleService {
     return this.scheduleForAssignment(assignment);
   }
 
+  async cancelRemindersForAssignment(assignmentId: string): Promise<void> {
+    await this.taskReminderRepository.cancelPendingForAssignment(assignmentId);
+    this.logger.info("Task reminders cancelled.", { assignmentId });
+  }
+
   async scheduleForAssignments(assignments: IAssignment[]): Promise<{ processed: number; scheduled: number }> {
     let scheduledCount = 0;
 
