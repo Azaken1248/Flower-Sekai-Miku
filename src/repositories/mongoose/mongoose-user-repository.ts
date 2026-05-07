@@ -46,9 +46,7 @@ export class MongooseUserRepository implements UserRepository {
 
     return UserModel.findOneAndUpdate(
       { discordId },
-      {
-        $set: setPayload,
-      },
+      { $set: setPayload },
       { new: true },
     ).exec();
   }
@@ -56,11 +54,7 @@ export class MongooseUserRepository implements UserRepository {
   async setHiatus(discordId: string, isOnHiatus: boolean): Promise<IUser | null> {
     return UserModel.findOneAndUpdate(
       { discordId },
-      {
-        $set: {
-          isOnHiatus,
-        },
-      },
+      { $set: { isOnHiatus } },
       { new: true },
     ).exec();
   }
@@ -74,6 +68,21 @@ export class MongooseUserRepository implements UserRepository {
       { discordId },
       {
         $addToSet: {
+          assignments: new Types.ObjectId(assignmentId),
+        },
+      },
+    ).exec();
+  }
+
+  async removeAssignment(discordId: string, assignmentId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(assignmentId)) {
+      throw new Error("Invalid assignment id.");
+    }
+
+    await UserModel.updateOne(
+      { discordId },
+      {
+        $pull: {
           assignments: new Types.ObjectId(assignmentId),
         },
       },
