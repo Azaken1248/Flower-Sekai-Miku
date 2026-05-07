@@ -55,10 +55,10 @@ export class MongooseUserRepository implements UserRepository {
     ).exec();
   }
 
-  async setHiatus(discordId: string, isOnHiatus: boolean): Promise<IUser | null> {
+  async setHiatus(discordId: string, isOnHiatus: boolean, hiatusStartedAt: Date | null, hiatusReason: string | null): Promise<IUser | null> {
     return UserModel.findOneAndUpdate(
       { discordId },
-      { $set: { isOnHiatus } },
+      { $set: { isOnHiatus, hiatusStartedAt, hiatusReason } },
       { new: true },
     ).exec();
   }
