@@ -56,6 +56,7 @@ export const buildContainer = (): ServiceContainer => {
       new UserService(
         resolver.resolve(TOKENS.userRepository),
         resolver.resolve(TOKENS.assignmentRepository),
+        resolver.resolve(TOKENS.taskReminderScheduleService),
         resolver.resolve(TOKENS.logger),
       ),
   );
@@ -86,6 +87,7 @@ export const buildContainer = (): ServiceContainer => {
       new TaskReminderDispatcherService(
         resolver.resolve(TOKENS.config),
         resolver.resolve(TOKENS.taskReminderRepository),
+        resolver.resolve(TOKENS.userRepository),
         resolver.resolve(TOKENS.discordClient),
         resolver.resolve(TOKENS.logger),
       ),
