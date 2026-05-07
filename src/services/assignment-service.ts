@@ -1,6 +1,6 @@
 import type { IAssignment } from "../models/assignment.model";
 import type { Logger } from "../core/logger/logger";
-import type { AssignmentRepository } from "../repositories/interfaces/assignment-repository";
+import type { AssignmentRepository, HistoryFilter } from "../repositories/interfaces/assignment-repository";
 import type { UserRepository } from "../repositories/interfaces/user-repository";
 import { TaskReminderScheduleService } from "./task-reminder-schedule-service";
 
@@ -259,5 +259,9 @@ export class AssignmentService {
     }
 
     return updated;
+  }
+
+  async getHistory(discordUserId: string, filter?: HistoryFilter): Promise<IAssignment[]> {
+    return this.assignmentRepository.findByDiscordUserId(discordUserId, filter);
   }
 }
