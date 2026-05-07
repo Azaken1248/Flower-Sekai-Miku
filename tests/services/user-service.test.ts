@@ -285,4 +285,83 @@ describe("UserService", () => {
       excused: 1,
     });
   });
+
+  it("getAvailableMembers splits free users into active and hiatus", async () => {
+    const users = [
+      { discordId: "user-1", isOnHiatus: false },
+      { discordId: "user-2", isOnHiatus: true },
+      { discordId: "user-3", isOnHiatus: false },
+    ];
+
+    const userRepository = {
+      findByDiscordId: vi.fn(),
+      findAllActive: vi.fn().mockResolvedValue(users),
+      create: vi.fn(),
+      reactivate: vi.fn(),
+      markDeboarded: vi.fn(),
+      setHiatus: vi.fn(),
+      appendAssignment: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      countByDiscordUserId: vi.fn((_: string, status?: string) => {
+        if (status === "PENDING") {
+          return Promise.resolve(0);
+        }
+
+        return Promise.resolve(0);
+      }),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockLogger(),
+    );
+
+    const result = await service.getAvailableMembers();
+
+    expect(result.active.length).toBe(2);
+    expect(result.hiatus.length).toBe(1);
+    expect(result.hiatus[0]!.discordId).toBe("user-2");
+  });
+
+  it("getAvailableMembers excludes users with pending tasks", async () => {
+    const users = [
+      { discordId: "user-1", isOnHiatus: false },
+      { discordId: "user-2", isOnHiatus: false },
+    ];
+
+    const userRepository = {
+      findByDiscordId: vi.fn(),
+      findAllActive: vi.fn().mockResolvedValue(users),
+      create: vi.fn(),
+      reactivate: vi.fn(),
+      markDeboarded: vi.fn(),
+      setHiatus: vi.fn(),
+      appendAssignment: vi.fn(),
+    };
+
+    const assignmentRepository = {
+      countByDiscordUserId: vi.fn((discordId: string, status?: string) => {
+        if (status === "PENDING" && discordId === "user-1") {
+          return Promise.resolve(3);
+        }
+
+        return Promise.resolve(0);
+      }),
+    };
+
+    const service = new UserService(
+      userRepository as never,
+      assignmentRepository as never,
+      createMockLogger(),
+    );
+
+    const result = await service.getAvailableMembers();
+
+    expect(result.active.length).toBe(1);
+    expect(result.active[0]!.discordId).toBe("user-2");
+    expect(result.hiatus.length).toBe(0);
+  });
 });

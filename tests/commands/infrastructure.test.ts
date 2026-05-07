@@ -13,9 +13,11 @@ describe("Infrastructure & Command Registration", () => {
 
       expect(names).toEqual([
         "assign",
+        "checkfree",
         "deboard",
         "extend",        
         "hello",
+        "history",
         "onboard",
         "ping",
         "profile",

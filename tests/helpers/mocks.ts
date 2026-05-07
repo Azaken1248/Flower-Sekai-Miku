@@ -175,6 +175,7 @@ export const createMockCommandContext = (
       deboard: vi.fn(),
       setHiatus: vi.fn(),
       getProfile: vi.fn(),
+      getAvailableMembers: vi.fn(),
     } as unknown as CommandExecutionContext["userService"],
     assignmentService: {
       assignTask: vi.fn(),
@@ -184,6 +185,7 @@ export const createMockCommandContext = (
       getPendingTasks: vi.fn(),
       submitTask: vi.fn(),
       approveTask: vi.fn(),
+      getHistory: vi.fn(),
     } as unknown as CommandExecutionContext["assignmentService"],
     configCacheService: {
       getConfig: vi.fn().mockReturnValue({
