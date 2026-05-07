@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  type AutocompleteInteraction,
   ButtonBuilder,
   ButtonStyle,
   type ChatInputCommandInteraction,
@@ -35,7 +36,8 @@ export class SubmitCommand implements SlashCommand {
       option
         .setName("assignment_id")
         .setDescription("The ID of the assignment to submit")
-        .setRequired(true),
+        .setRequired(true)
+        .setAutocomplete(true),
     );
 
   async execute(
@@ -192,5 +194,29 @@ export class SubmitCommand implements SlashCommand {
       ],
       flags: MessageFlags.Ephemeral,
     });
+  }
+
+  async autocomplete(
+    interaction: AutocompleteInteraction,
+    context: CommandExecutionContext,
+  ): Promise<void> {
+    const focused = interaction.options.getFocused();
+    const assignments = await context.assignmentService.getPendingTasks(interaction.user.id);
+
+    const choices = assignments
+      .filter((a) => {
+        const label = `${a.taskName} (${a.id})`;
+        return label.toLowerCase().includes(focused.toLowerCase());
+      })
+      .slice(0, 25)
+      .map((a) => {
+        const deadlineStr = a.deadline.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return {
+          name: `${a.taskName} — due ${deadlineStr}`.slice(0, 100),
+          value: a.id as string,
+        };
+      });
+
+    await interaction.respond(choices);
   }
 }

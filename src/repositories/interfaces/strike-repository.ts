@@ -9,6 +9,7 @@ export interface CreateStrikeInput {
 
 export interface StrikeRepository {
   create(input: CreateStrikeInput): Promise<IStrike>;
+  findAll(): Promise<IStrike[]>;
   findByDiscordUserId(discordUserId: string): Promise<IStrike[]>;
   findById(id: string): Promise<IStrike | null>;
   updateAppealStatus(id: string, status: StrikeAppealStatus, appealReason?: string | null, resolvedBy?: string | null): Promise<IStrike | null>;

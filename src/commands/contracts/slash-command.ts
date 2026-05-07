@@ -1,4 +1,5 @@
 import type {
+  AutocompleteInteraction,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
   SlashCommandOptionsOnlyBuilder,
@@ -13,4 +14,9 @@ export interface SlashCommand {
     interaction: ChatInputCommandInteraction,
     context: CommandExecutionContext,
   ): Promise<void>;
+  autocomplete?(
+    interaction: AutocompleteInteraction,
+    context: CommandExecutionContext,
+  ): Promise<void>;
 }
+

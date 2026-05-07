@@ -38,6 +38,22 @@ export class InteractionCreateHandler {
       return;
     }
 
+    if (interaction.isAutocomplete()) {
+      const command = this.commandRegistry.get(interaction.commandName);
+      if (command?.autocomplete) {
+        try {
+          await command.autocomplete(interaction, this.commandContext);
+        } catch (error) {
+          this.logger.warn("Autocomplete handler failed.", {
+            commandName: interaction.commandName,
+            userId: interaction.user.id,
+          });
+          await interaction.respond([]).catch(() => {});
+        }
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) {
       return;
     }

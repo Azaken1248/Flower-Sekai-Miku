@@ -193,4 +193,8 @@ export class StrikeService {
   async getStrikesForUser(discordUserId: string): Promise<IStrike[]> {
     return this.strikeRepository.findByDiscordUserId(discordUserId);
   }
+
+  async getAllStrikes(): Promise<IStrike[]> {
+    return this.strikeRepository.findAll();
+  }
 }

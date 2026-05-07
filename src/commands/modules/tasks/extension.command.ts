@@ -1,4 +1,5 @@
 import {
+  type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   MessageFlags,
   SlashCommandBuilder,
@@ -18,7 +19,8 @@ export class ExtensionCommand implements SlashCommand {
       option
         .setName("assignment_id")
         .setDescription("The ID of the assignment to extend")
-        .setRequired(true),
+        .setRequired(true)
+        .setAutocomplete(true),
     )
     .addStringOption((option) =>
       option
@@ -94,5 +96,29 @@ export class ExtensionCommand implements SlashCommand {
       ],
       flags: MessageFlags.Ephemeral,
     });
+  }
+
+  async autocomplete(
+    interaction: AutocompleteInteraction,
+    context: CommandExecutionContext,
+  ): Promise<void> {
+    const focused = interaction.options.getFocused();
+    const assignments = await context.assignmentService.getPendingTasks(interaction.user.id);
+
+    const choices = assignments
+      .filter((a) => {
+        const label = `${a.taskName} (${a.id})`;
+        return label.toLowerCase().includes(focused.toLowerCase());
+      })
+      .slice(0, 25)
+      .map((a) => {
+        const deadlineStr = a.deadline.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return {
+          name: `${a.taskName} \u2014 due ${deadlineStr}`.slice(0, 100),
+          value: a.id as string,
+        };
+      });
+
+    await interaction.respond(choices);
   }
 }

@@ -204,6 +204,7 @@ export const createMockCommandContext = (
       fileAppeal: vi.fn(),
       resolveAppeal: vi.fn(),
       getStrikesForUser: vi.fn(),
+      getAllStrikes: vi.fn(),
     } as unknown as CommandExecutionContext["strikeService"],
     ...overrides,
   };

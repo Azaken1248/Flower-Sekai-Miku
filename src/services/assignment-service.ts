@@ -226,8 +226,12 @@ export class AssignmentService {
     return { success: true, assignment: updatedAssignment, oldDiscordUserId: assignment.discordUserId };
   }
 
-  async getPendingTasks(discordUserId: string): Promise<IAssignment[]> {
-    return this.assignmentRepository.findPendingByDiscordUserId(discordUserId);
+  async getPendingTasks(discordUserId?: string): Promise<IAssignment[]> {
+    if (discordUserId) {
+      return this.assignmentRepository.findPendingByDiscordUserId(discordUserId);
+    }
+
+    return this.assignmentRepository.findAllPending();
   }
 
   async submitTask(input: SubmitTaskInput): Promise<SubmitTaskResult> {

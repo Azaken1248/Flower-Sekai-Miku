@@ -1,4 +1,5 @@
 import {
+  type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   MessageFlags,
   SlashCommandBuilder,
@@ -15,7 +16,7 @@ export class RemoveStrikeCommand implements SlashCommand {
     .setName("removestrike")
     .setDescription("Remove a strike from a crew member. Owners only.")
     .addStringOption((option) =>
-      option.setName("strike_id").setDescription("ID of the strike to remove").setRequired(true),
+      option.setName("strike_id").setDescription("ID of the strike to remove").setRequired(true).setAutocomplete(true),
     )
     .addStringOption((option) =>
       option.setName("reason").setDescription("Reason for removing the strike").setRequired(true),
@@ -109,5 +110,38 @@ export class RemoveStrikeCommand implements SlashCommand {
         // Logging failures should not break the command
       }
     }
+  }
+
+  async autocomplete(
+    interaction: AutocompleteInteraction,
+    context: CommandExecutionContext,
+  ): Promise<void> {
+    const focused = interaction.options.getFocused();
+    const strikes = await context.strikeService.getAllStrikes();
+
+    const { resolveUsernames } = await import("../../../utils/resolve-usernames.js");
+    const userIds = strikes.map((s) => s.discordUserId);
+    const nameMap = await resolveUsernames(interaction.client, userIds);
+
+    const REASON_LABELS: Record<string, string> = { late: "Late", misc: "Misc" };
+
+    const choices = strikes
+      .filter((s) => {
+        const username = nameMap.get(s.discordUserId) ?? s.discordUserId;
+        const label = `${username} ${s.reason} ${s.id}`;
+        return label.toLowerCase().includes(focused.toLowerCase());
+      })
+      .slice(0, 25)
+      .map((s) => {
+        const username = nameMap.get(s.discordUserId) ?? s.discordUserId;
+        const reasonLabel = REASON_LABELS[s.reason] ?? s.reason;
+        const dateStr = s.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return {
+          name: `${username} \u2014 ${reasonLabel} (${dateStr})`.slice(0, 100),
+          value: s.id as string,
+        };
+      });
+
+    await interaction.respond(choices);
   }
 }

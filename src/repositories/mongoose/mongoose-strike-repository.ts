@@ -13,6 +13,10 @@ export class MongooseStrikeRepository implements StrikeRepository {
     });
   }
 
+  async findAll(): Promise<IStrike[]> {
+    return StrikeModel.find().sort({ issuedAt: -1 }).exec();
+  }
+
   async findByDiscordUserId(discordUserId: string): Promise<IStrike[]> {
     return StrikeModel.find({ discordUserId }).sort({ issuedAt: -1 }).exec();
   }

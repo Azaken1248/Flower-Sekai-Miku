@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  type AutocompleteInteraction,
   ButtonBuilder,
   ButtonStyle,
   type ChatInputCommandInteraction,
@@ -22,7 +23,7 @@ export class AppealStrikeCommand implements SlashCommand {
     .setName("appealstrike")
     .setDescription("Appeal a strike you received. An owner or mod will review it.")
     .addStringOption((option) =>
-      option.setName("strike_id").setDescription("ID of the strike to appeal").setRequired(true),
+      option.setName("strike_id").setDescription("ID of the strike to appeal").setRequired(true).setAutocomplete(true),
     )
     .addStringOption((option) =>
       option.setName("reason").setDescription("Why you believe this strike should be removed").setRequired(true),
@@ -146,5 +147,33 @@ export class AppealStrikeCommand implements SlashCommand {
       ],
       components: [row],
     });
+  }
+
+  async autocomplete(
+    interaction: AutocompleteInteraction,
+    context: CommandExecutionContext,
+  ): Promise<void> {
+    const focused = interaction.options.getFocused();
+    const strikes = await context.strikeService.getStrikesForUser(interaction.user.id);
+
+    const choices = strikes
+      .filter((s) => {
+        // Only show strikes that haven't been accepted (i.e. still exist)
+        if (s.appealStatus === "accepted") return false;
+        const label = `${s.reason} ${s.detail ?? ""} ${s.id}`;
+        return label.toLowerCase().includes(focused.toLowerCase());
+      })
+      .slice(0, 25)
+      .map((s) => {
+        const reasonLabel = REASON_LABELS[s.reason] ?? s.reason;
+        const dateStr = s.issuedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const statusTag = s.appealStatus === "pending" ? " [PENDING]" : s.appealStatus === "denied" ? " [DENIED]" : "";
+        return {
+          name: `${reasonLabel}${s.detail ? ` \u2014 ${s.detail}` : ""} (${dateStr})${statusTag}`.slice(0, 100),
+          value: s.id as string,
+        };
+      });
+
+    await interaction.respond(choices);
   }
 }

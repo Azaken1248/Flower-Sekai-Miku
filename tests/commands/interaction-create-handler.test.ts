@@ -55,6 +55,7 @@ describe("InteractionCreateHandler", () => {
     const interaction = {
       isChatInputCommand: vi.fn().mockReturnValue(false),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -70,6 +71,7 @@ describe("InteractionCreateHandler", () => {
       ...createMockInteraction({ commandName: "unknown" }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -99,6 +101,7 @@ describe("InteractionCreateHandler", () => {
       }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -127,6 +130,7 @@ describe("InteractionCreateHandler", () => {
       }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -148,6 +152,7 @@ describe("InteractionCreateHandler", () => {
       ...createMockInteraction({ commandName: "throws", replied: false, deferred: false }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -169,6 +174,7 @@ describe("InteractionCreateHandler", () => {
       ...createMockInteraction({ commandName: "throws", replied: true, deferred: false }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -234,6 +240,7 @@ describe("InteractionCreateHandler", () => {
       ...createMockInteraction({ commandName: "test-cmd", user: { id: "user-1" } }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
@@ -258,6 +265,7 @@ describe("InteractionCreateHandler", () => {
       ...createMockInteraction({ commandName: "test-cmd", user: { id: "user-1" } }),
       isChatInputCommand: vi.fn().mockReturnValue(true),
       isButton: vi.fn().mockReturnValue(false),
+      isAutocomplete: vi.fn().mockReturnValue(false),
     };
 
     await (handler as unknown as { handleInteraction: (interaction: unknown) => Promise<void> }).handleInteraction(interaction);
