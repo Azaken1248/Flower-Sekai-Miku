@@ -1,0 +1,128 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HistoryCommand = void 0;
+const discord_js_1 = require("discord.js");
+const constants_js_1 = require("../../../config/constants.js");
+const miku_embed_js_1 = require("../../../presentation/miku-embed.js");
+const STATUS_CHOICES = [
+    { name: "Pending", value: "PENDING" },
+    { name: "Completed", value: "COMPLETED" },
+    { name: "Late", value: "LATE" },
+    { name: "Excused", value: "EXCUSED" },
+];
+const STATUS_EMOJI = {
+    PENDING: "⏳",
+    COMPLETED: "✅",
+    LATE: "🔴",
+    EXCUSED: "🟡",
+};
+const resolveRoleLabel = (roleId, specializedRoles) => {
+    for (const [key, id] of Object.entries(specializedRoles)) {
+        if (id === roleId) {
+            return constants_js_1.SPECIALIZED_ROLE_LABELS[key] ?? key;
+        }
+    }
+    return "Unknown";
+};
+class HistoryCommand {
+    adminRoleIds;
+    specializedRoles;
+    data;
+    constructor(adminRoleIds, specializedRoles) {
+        this.adminRoleIds = adminRoleIds;
+        this.specializedRoles = specializedRoles;
+        const roleChoices = Object.entries(specializedRoles).map(([key, value]) => ({
+            name: constants_js_1.SPECIALIZED_ROLE_LABELS[key] || key,
+            value,
+        }));
+        this.data = new discord_js_1.SlashCommandBuilder()
+            .setName("history")
+            .setDescription("Search and view task history with filters.")
+            .addUserOption((option) => option
+            .setName("member")
+            .setDescription("Crew member to look up (defaults to yourself)")
+            .setRequired(false))
+            .addStringOption((option) => option
+            .setName("status")
+            .setDescription("Filter by task status")
+            .setRequired(false)
+            .addChoices(...STATUS_CHOICES))
+            .addStringOption((option) => option
+            .setName("role")
+            .setDescription("Filter by task domain")
+            .setRequired(false)
+            .addChoices(...roleChoices))
+            .addStringOption((option) => option
+            .setName("search")
+            .setDescription("Search by task name (case-insensitive)")
+            .setRequired(false));
+    }
+    async execute(interaction, context) {
+        const targetUser = interaction.options.getUser("member") ?? interaction.user;
+        const statusFilter = interaction.options.getString("status");
+        const roleFilter = interaction.options.getString("role");
+        const searchFilter = interaction.options.getString("search");
+        const filter = {};
+        if (statusFilter)
+            filter.status = statusFilter;
+        if (roleFilter)
+            filter.roleId = roleFilter;
+        if (searchFilter)
+            filter.taskName = searchFilter;
+        const assignments = await context.assignmentService.getHistory(targetUser.id, filter);
+        if (assignments.length === 0) {
+            const filterParts = [];
+            if (statusFilter)
+                filterParts.push(`status: \`${statusFilter}\``);
+            if (roleFilter)
+                filterParts.push(`role: \`${resolveRoleLabel(roleFilter, this.specializedRoles)}\``);
+            if (searchFilter)
+                filterParts.push(`search: \`${searchFilter}\``);
+            const filterSummary = filterParts.length > 0 ? ` with filters (${filterParts.join(", ")})` : "";
+            await interaction.reply({
+                embeds: [
+                    (0, miku_embed_js_1.createMikuEmbed)({
+                        title: "Miku History Archive",
+                        description: `> No task records found for <@${targetUser.id}>${filterSummary}. A clean slate can be a fresh start! ✨`,
+                        tone: "mist",
+                    }),
+                ],
+                flags: discord_js_1.MessageFlags.Ephemeral,
+            });
+            return;
+        }
+        const fields = assignments.slice(0, 25).map((task, index) => {
+            const unixDeadline = Math.floor(task.deadline.getTime() / 1000);
+            const statusEmoji = STATUS_EMOJI[task.status] ?? "❓";
+            const roleLabel = resolveRoleLabel(task.roleId, this.specializedRoles);
+            return {
+                name: `◈ ${index + 1}. ${task.taskName}`,
+                value: `> ${statusEmoji} **${task.status}** | \` ${roleLabel} \`\n` +
+                    `> **Deadline:** <t:${unixDeadline}:f> (<t:${unixDeadline}:R>)\n` +
+                    `> **ID:** \`${task.id}\``,
+                inline: false,
+            };
+        });
+        const filterParts = [];
+        if (statusFilter)
+            filterParts.push(`Status: \`${statusFilter}\``);
+        if (roleFilter)
+            filterParts.push(`Role: \`${resolveRoleLabel(roleFilter, this.specializedRoles)}\``);
+        if (searchFilter)
+            filterParts.push(`Search: \`${searchFilter}\``);
+        const filterLine = filterParts.length > 0 ? `\n> **Filters:** ${filterParts.join(" · ")}` : "";
+        const countLine = `\n> Showing **${assignments.length}** record${assignments.length !== 1 ? "s" : ""}`;
+        await interaction.reply({
+            embeds: [
+                (0, miku_embed_js_1.createMikuEmbed)({
+                    title: "Miku History Archive",
+                    description: `> Here's the task history for <@${targetUser.id}>! Every record tells a story of progress. 🌟${filterLine}${countLine}`,
+                    tone: "sky",
+                    fields,
+                }),
+            ],
+            flags: discord_js_1.MessageFlags.Ephemeral,
+        });
+    }
+}
+exports.HistoryCommand = HistoryCommand;
