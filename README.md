@@ -24,6 +24,7 @@ Flower Sekai Miku is a ground-up rewrite of the legacy Blossoming Sekai bot, red
 14. [Adapting for Your Own Server](#adapting-for-your-own-server)
 15. [Contributing](#contributing)
 16. [License](#license)
+17. [Credits](#credits)
 
 ---
 
@@ -737,3 +738,6 @@ export class MyCommand implements SlashCommand {
 ## License
 
 ISC
+
+## Credits
+raspberry_sorbet3 - bot pfp and icon design <3
